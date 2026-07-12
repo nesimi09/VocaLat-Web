@@ -1,7 +1,7 @@
 {
   "name": "VocaLat – Latein lernen",
   "short_name": "VocaLat",
-  "description": "Vokabeln, Übungen und Grammatik für Latein.",
+  "description": "Vokabeln, Übungen, Grammatik und lokale Buchanalyse für Latein.",
   "start_url": "./",
   "display": "standalone",
   "background_color": "#f2e6cc",
