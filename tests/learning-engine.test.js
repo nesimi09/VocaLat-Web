@@ -1,5 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { analyzeBookText, answerMatches, answerOptionState, shuffledUniqueMeanings } from "../learning-engine.js";
 import { cleanOcrText } from "../ocr.js";
 
@@ -139,6 +140,47 @@ test("missing grammar explanations are generated locally", () => {
   assert.equal(result.grammar[0].title, "PPA und seine Übersetzung");
   assert.equal(result.grammar[0].generated, true);
   assert.equal(result.grammar[0].index, null);
+});
+
+test("morphological lemmas beat unrelated homographs and generated book forms", () => {
+  const vocabulary = [{ lektion: 1, latein: "mos", grammatik: "moris m.", deutsch: "die Sitte" }];
+  const fallback = [
+    { lemma: "rogatus", forms: ["rogatus", "rogati"], pos: "n", meanings: ["Frage"] },
+    { lemma: "rogo", forms: ["rogo", "rogare"], pos: "v", meanings: ["bitten"] },
+    { lemma: "morior", forms: ["morior", "mori"], pos: "v", meanings: ["sterben"] }
+  ];
+  const morphology = new Map([
+    ["rogatus", [{ forms: ["rogo", "rogare", "rogatus"], morphology: { part: "ppa", tense: "perfect", voice: "passive" } }]],
+    ["moriens", [{ forms: ["morior", "mori"], morphology: { part: "ppa", tense: "present", voice: "active" } }]]
+  ]);
+  const result = analyzeBookText("rogatus moriens", vocabulary, [], null, fallback, morphology);
+  assert.equal(result.matches[0].entries[0].lemma, "rogo");
+  assert.equal(result.matches[1].entries[0].lemma, "morior");
+});
+
+test("page glossary and proper names resolve before generic fallbacks", () => {
+  const fallback = [
+    { lemma: "philtrum", forms: ["philtrum"], pos: "n", meanings: ["Filter"] },
+    { lemma: "philtrum", forms: ["philtrum"], pos: "n", meanings: ["Liebestrank"], source: "glossary" }
+  ];
+  const result = analyzeBookText("Nessus philtrum Deianirae Nessum", [], [], null, fallback);
+  assert.equal(result.matches[0].status, "proper");
+  assert.equal(result.matches[1].status, "contextual");
+  assert.equal(result.matches[1].entries[0].deutsch, "Liebestrank");
+  assert.equal(result.matches[2].entries[0].lemma, "Deianira");
+  assert.equal(result.matches[3].entries[0].lemma, "Nessus");
+});
+
+test("verified complex passages replace word salad and tolerate a small OCR error", () => {
+  const memory = JSON.parse(readFileSync(new URL("../data/translation-memory.json", import.meta.url), "utf8")).entries;
+  const text = "Nessus centaurus rogats est ab Deianira, ut se flumen Euhenum transferret: quam sublatam in flumine ipso violare voluit. Hoc Hercules cum intervenisset et Deianira cum fidem eius imploravisset, Nessum sagittis confixit. Ille moriens, cum sciret sagittas hydrae veneno tinctas quantam vim veneni habere, sanguinem suum exceptum Deianirae dedit et id philtrum esse dixit; si vellet, ne se coniunx sperneret, eo iuberet se vestem eius attrahere. Id Deianira credens conditum diligenter servavit.";
+  const result = analyzeBookText(text, [], [], null, [], new Map(), memory);
+  assert.equal(result.translationVerified, true);
+  assert.equal(result.verifiedLines, 5);
+  assert.match(result.translation, /^Der Zentaur Nessus wurde von Deianira gebeten/);
+  assert.match(result.translation, /durchbohrte er Nessus mit Pfeilen/);
+  assert.match(result.translation, /Deianira glaubte dies und bewahrte es, nachdem sie es versteckt hatte, sorgfältig auf\.$/);
+  assert.doesNotMatch(result.translation, /\[[^\]]+\]|Frage es gibt|die Sitte/);
 });
 
 test("OCR cleanup joins line-break hyphenation without changing paragraphs", () => {

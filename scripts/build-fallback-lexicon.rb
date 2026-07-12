@@ -32,13 +32,16 @@ REXML::XPath.each(document, "//tei:entry", namespace) do |entry|
   target["meanings"] |= meanings
 end
 
-# Small proper-name supplement for common school texts that is absent from FreeDict 1.0.3.
-entries["siren|n"] = {
-  "lemma" => "Siren",
-  "forms" => ["Siren", "Sirenis"],
-  "pos" => "n",
-  "meanings" => ["die Sirene"]
-}
+# Small school-text supplement for common lemmas that are absent from FreeDict 1.0.3.
+[
+  { "lemma" => "Siren", "forms" => ["Siren", "Sirenis"], "pos" => "n", "meanings" => ["die Sirene"] },
+  { "lemma" => "hydra", "forms" => ["hydra", "hydrae"], "pos" => "n", "meanings" => ["die Hydra"] },
+  { "lemma" => "philtrum", "forms" => ["philtrum", "philtri"], "pos" => "n", "meanings" => ["der Liebestrank"] },
+  { "lemma" => "configo", "forms" => ["configo", "configere", "confixi", "confixum"], "pos" => "v", "meanings" => ["durchbohren", "zusammenheften"] },
+  { "lemma" => "attraho", "forms" => ["attraho", "attrahere", "attraxi", "attractum"], "pos" => "v", "meanings" => ["heranziehen", "an sich ziehen"] }
+].each do |supplement|
+  entries[[supplement["lemma"].downcase, supplement["pos"]].join("|")] = supplement
+end
 
 payload = {
   "source" => {
