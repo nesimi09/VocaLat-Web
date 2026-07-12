@@ -1,0 +1,1343 @@
+{
+  "dokument": "Grammatikübersichten",
+  "quelle": "Grammatik.md",
+  "abschnitte": [
+    {
+      "typ": "konjugation",
+      "titel": "Präsens von esse, posse und ire",
+      "formen": [
+        {
+          "person": "1. Sg.",
+          "esse": "sum",
+          "posse": "possum",
+          "ire": "eo"
+        },
+        {
+          "person": "2. Sg.",
+          "esse": "es",
+          "posse": "potes",
+          "ire": "is"
+        },
+        {
+          "person": "3. Sg.",
+          "esse": "est",
+          "posse": "potest",
+          "ire": "it"
+        },
+        {
+          "person": "1. Pl.",
+          "esse": "sumus",
+          "posse": "possumus",
+          "ire": "imus"
+        },
+        {
+          "person": "2. Pl.",
+          "esse": "estis",
+          "posse": "potestis",
+          "ire": "itis"
+        },
+        {
+          "person": "3. Pl.",
+          "esse": "sunt",
+          "posse": "possunt",
+          "ire": "eunt"
+        }
+      ]
+    },
+    {
+      "typ": "regel",
+      "titel": "Imperfekt Aktiv",
+      "bildung": "Präsensstamm + -ba- (a-/e-Konjugation) bzw. -ēba- (i-, gemischte und konsonantische Konjugation) + Personalendung",
+      "personalendungen": {
+        "singular": [
+          "-m",
+          "-s",
+          "-t"
+        ],
+        "plural": [
+          "-mus",
+          "-tis",
+          "-nt"
+        ]
+      },
+      "beispielreihen": [
+        {
+          "konjugation": "a",
+          "verb": "rogare",
+          "formen": [
+            "rogabam",
+            "rogabas",
+            "rogabat",
+            "rogabamus",
+            "rogabatis",
+            "rogabant"
+          ]
+        },
+        {
+          "konjugation": "e",
+          "verb": "vidēre",
+          "formen": [
+            "vidēbam",
+            "vidēbas",
+            "vidēbat",
+            "vidēbamus",
+            "vidēbatis",
+            "vidēbant"
+          ]
+        },
+        {
+          "konjugation": "i",
+          "verb": "audīre",
+          "formen": [
+            "audiēbam",
+            "audiēbas",
+            "audiēbat",
+            "audiēbamus",
+            "audiēbatis",
+            "audiēbant"
+          ]
+        },
+        {
+          "konjugation": "gemischt",
+          "verb": "capere",
+          "formen": [
+            "capiēbam",
+            "capiēbas",
+            "capiēbat",
+            "capiēbamus",
+            "capiēbatis",
+            "capiēbant"
+          ]
+        },
+        {
+          "konjugation": "konsonantisch",
+          "verb": "quaerere",
+          "formen": [
+            "quaerēbam",
+            "quaerēbas",
+            "quaerēbat",
+            "quaerēbamus",
+            "quaerēbatis",
+            "quaerēbant"
+          ]
+        }
+      ]
+    },
+    {
+      "typ": "konjugation",
+      "titel": "Imperfekt von esse, posse und ire",
+      "formen": [
+        {
+          "person": "1. Sg.",
+          "esse": "eram",
+          "posse": "poteram",
+          "ire": "ibam"
+        },
+        {
+          "person": "2. Sg.",
+          "esse": "eras",
+          "posse": "poteras",
+          "ire": "ibas"
+        },
+        {
+          "person": "3. Sg.",
+          "esse": "erat",
+          "posse": "poterat",
+          "ire": "ibat"
+        },
+        {
+          "person": "1. Pl.",
+          "esse": "eramus",
+          "posse": "poteramus",
+          "ire": "ibamus"
+        },
+        {
+          "person": "2. Pl.",
+          "esse": "eratis",
+          "posse": "poteratis",
+          "ire": "ibatis"
+        },
+        {
+          "person": "3. Pl.",
+          "esse": "erant",
+          "posse": "poterant",
+          "ire": "ibant"
+        }
+      ]
+    },
+    {
+      "typ": "regel",
+      "titel": "Futur I Aktiv",
+      "bildung": "Präsensstamm + -bo/-bi-/-bu- in der a-/e-Konjugation; Präsensstamm + -a-/-e- in der i-, gemischten und konsonantischen Konjugation.",
+      "merkbegriff": "-bo/-bi-/-bu-Futur und Kamel-Futur",
+      "beispielreihen": [
+        {
+          "verb": "rogare",
+          "formen": [
+            "rogabo",
+            "rogabis",
+            "rogabit",
+            "rogabimus",
+            "rogabitis",
+            "rogabunt"
+          ]
+        },
+        {
+          "verb": "vidēre",
+          "formen": [
+            "vidēbo",
+            "vidēbis",
+            "vidēbit",
+            "vidēbimus",
+            "vidēbitis",
+            "vidēbunt"
+          ]
+        },
+        {
+          "verb": "audīre",
+          "formen": [
+            "audiam",
+            "audiēs",
+            "audiet",
+            "audiēmus",
+            "audiētis",
+            "audient"
+          ]
+        },
+        {
+          "verb": "capere",
+          "formen": [
+            "capiam",
+            "capiēs",
+            "capiet",
+            "capiēmus",
+            "capiētis",
+            "capient"
+          ]
+        },
+        {
+          "verb": "quaerere",
+          "formen": [
+            "quaeram",
+            "quaerēs",
+            "quaeret",
+            "quaerēmus",
+            "quaerētis",
+            "quaerent"
+          ]
+        }
+      ]
+    },
+    {
+      "typ": "konjugation",
+      "titel": "Futur I von esse, posse und ire",
+      "formen": [
+        {
+          "person": "1. Sg.",
+          "esse": "ero",
+          "posse": "potero",
+          "ire": "ibo"
+        },
+        {
+          "person": "2. Sg.",
+          "esse": "eris",
+          "posse": "poteris",
+          "ire": "ibis"
+        },
+        {
+          "person": "3. Sg.",
+          "esse": "erit",
+          "posse": "poterit",
+          "ire": "ibit"
+        },
+        {
+          "person": "1. Pl.",
+          "esse": "erimus",
+          "posse": "poterimus",
+          "ire": "ibimus"
+        },
+        {
+          "person": "2. Pl.",
+          "esse": "eritis",
+          "posse": "poteritis",
+          "ire": "ibitis"
+        },
+        {
+          "person": "3. Pl.",
+          "esse": "erunt",
+          "posse": "poterunt",
+          "ire": "ibunt"
+        }
+      ]
+    },
+    {
+      "typ": "konjugation",
+      "titel": "Perfekt von esse, posse und ire",
+      "formen": [
+        {
+          "person": "1. Sg.",
+          "esse": "fui",
+          "posse": "potui",
+          "ire": "ii / ivi"
+        },
+        {
+          "person": "2. Sg.",
+          "esse": "fuisti",
+          "posse": "potuisti",
+          "ire": "isti / ivisti"
+        },
+        {
+          "person": "3. Sg.",
+          "esse": "fuit",
+          "posse": "potuit",
+          "ire": "iit / ivit"
+        },
+        {
+          "person": "1. Pl.",
+          "esse": "fuimus",
+          "posse": "potuimus",
+          "ire": "iimus / ivimus"
+        },
+        {
+          "person": "2. Pl.",
+          "esse": "fuistis",
+          "posse": "potuistis",
+          "ire": "istis / ivistis"
+        },
+        {
+          "person": "3. Pl.",
+          "esse": "fuerunt",
+          "posse": "potuerunt",
+          "ire": "ierunt / iverunt"
+        }
+      ]
+    },
+    {
+      "typ": "konjugation",
+      "titel": "Plusquamperfekt von esse, posse und ire",
+      "formen": [
+        {
+          "person": "1. Sg.",
+          "esse": "fueram",
+          "posse": "potueram",
+          "ire": "ieram / iveram"
+        },
+        {
+          "person": "2. Sg.",
+          "esse": "fueras",
+          "posse": "potueras",
+          "ire": "ieras / iveras"
+        },
+        {
+          "person": "3. Sg.",
+          "esse": "fuerat",
+          "posse": "potuerat",
+          "ire": "ierat / iverat"
+        },
+        {
+          "person": "1. Pl.",
+          "esse": "fueramus",
+          "posse": "potueramus",
+          "ire": "ieramus / iveramus"
+        },
+        {
+          "person": "2. Pl.",
+          "esse": "fueratis",
+          "posse": "potueratis",
+          "ire": "ieratis / iveratis"
+        },
+        {
+          "person": "3. Pl.",
+          "esse": "fuerant",
+          "posse": "potuerant",
+          "ire": "ierant / iverant"
+        }
+      ]
+    },
+    {
+      "typ": "konjugation",
+      "titel": "Futur II von esse, posse und ire",
+      "formen": [
+        {
+          "person": "1. Sg.",
+          "esse": "fuero",
+          "posse": "potuero",
+          "ire": "iero / ivero"
+        },
+        {
+          "person": "2. Sg.",
+          "esse": "fueris",
+          "posse": "potueris",
+          "ire": "ieris / iveris"
+        },
+        {
+          "person": "3. Sg.",
+          "esse": "fuerit",
+          "posse": "potuerit",
+          "ire": "ierit / iverit"
+        },
+        {
+          "person": "1. Pl.",
+          "esse": "fuerimus",
+          "posse": "potuerimus",
+          "ire": "ierimus / iverimus"
+        },
+        {
+          "person": "2. Pl.",
+          "esse": "fueritis",
+          "posse": "potueritis",
+          "ire": "ieritis / iveritis"
+        },
+        {
+          "person": "3. Pl.",
+          "esse": "fuerint",
+          "posse": "potuerint",
+          "ire": "ierint / iverint"
+        }
+      ]
+    },
+    {
+      "typ": "regel",
+      "titel": "Perfekt, Plusquamperfekt und Futur II Aktiv",
+      "bildung": "Perfektstamm + Perfektendungen; Plusquamperfekt: Perfektstamm + -era- + Personalendung; Futur II: Perfektstamm + -eri-/-er- + Personalendung.",
+      "personalendungen": {
+        "singular": [
+          "-i",
+          "-isti",
+          "-it"
+        ],
+        "plural": [
+          "-imus",
+          "-istis",
+          "-erunt"
+        ]
+      },
+      "beispiele": [
+        {
+          "tempus": "Perfekt",
+          "verb": "rogare",
+          "formen": [
+            "rogavi",
+            "rogavisti",
+            "rogavit",
+            "rogavimus",
+            "rogavistis",
+            "rogaverunt"
+          ]
+        },
+        {
+          "tempus": "Plusquamperfekt",
+          "verb": "rogare",
+          "formen": [
+            "rogaveram",
+            "rogaveras",
+            "rogaverat",
+            "rogaveramus",
+            "rogaveratis",
+            "rogaverant"
+          ]
+        },
+        {
+          "tempus": "Futur II",
+          "verb": "rogare",
+          "formen": [
+            "rogavero",
+            "rogaveris",
+            "rogaverit",
+            "rogaverimus",
+            "rogaveritis",
+            "rogaverint"
+          ]
+        }
+      ]
+    },
+    {
+      "typ": "regel",
+      "titel": "Passiv: Präsens, Imperfekt und Futur I",
+      "praesens_personalendungen": [
+        "-r",
+        "-ris",
+        "-tur",
+        "-mur",
+        "-mini",
+        "-ntur"
+      ],
+      "imperfekt_bildung": "Präsensstamm + -ba-/-ēba- + -r, -ris, -tur, -mur, -mini, -ntur.",
+      "beispiele": [
+        {
+          "tempus": "Präsens",
+          "verb": "rogare",
+          "formen": [
+            "rogor",
+            "rogaris",
+            "rogatur",
+            "rogamur",
+            "rogamini",
+            "rogantur"
+          ]
+        },
+        {
+          "tempus": "Imperfekt",
+          "verb": "rogare",
+          "formen": [
+            "rogabar",
+            "rogabaris",
+            "rogabatur",
+            "rogabamur",
+            "rogabamini",
+            "rogabantur"
+          ]
+        },
+        {
+          "tempus": "Futur I",
+          "verb": "rogare",
+          "formen": [
+            "rogabor",
+            "rogaberis",
+            "rogabitur",
+            "rogabimur",
+            "rogabimini",
+            "rogabuntur"
+          ]
+        }
+      ]
+    },
+    {
+      "typ": "regel",
+      "titel": "Passiv: Perfekt, Plusquamperfekt und Futur II",
+      "bildung": "PPP + passende Form von esse. Das PPP passt sich in Kasus, Numerus und Genus an das Subjekt an.",
+      "beispiele": [
+        {
+          "tempus": "Perfekt",
+          "verb": "laudare",
+          "formen": [
+            "laudatus sum",
+            "laudatus es",
+            "laudatus est",
+            "laudati sumus",
+            "laudati estis",
+            "laudati sunt"
+          ]
+        },
+        {
+          "tempus": "Plusquamperfekt",
+          "verb": "laudare",
+          "formen": [
+            "laudatus eram",
+            "laudatus eras",
+            "laudatus erat",
+            "laudati eramus",
+            "laudati eratis",
+            "laudati erant"
+          ]
+        },
+        {
+          "tempus": "Futur II",
+          "verb": "laudare",
+          "formen": [
+            "laudatus ero",
+            "laudatus eris",
+            "laudatus erit",
+            "laudati erimus",
+            "laudati eritis",
+            "laudati erunt"
+          ]
+        }
+      ]
+    },
+    {
+      "typ": "deklination",
+      "titel": "Relativpronomen qui, quae, quod",
+      "formen": {
+        "singular": {
+          "nominativ": [
+            "qui",
+            "quae",
+            "quod"
+          ],
+          "genitiv": [
+            "cuius",
+            "cuius",
+            "cuius"
+          ],
+          "dativ": [
+            "cui",
+            "cui",
+            "cui"
+          ],
+          "akkusativ": [
+            "quem",
+            "quam",
+            "quod"
+          ],
+          "ablativ": [
+            "quo",
+            "qua",
+            "quo"
+          ]
+        },
+        "plural": {
+          "nominativ": [
+            "qui",
+            "quae",
+            "quae"
+          ],
+          "genitiv": [
+            "quorum",
+            "quarum",
+            "quorum"
+          ],
+          "dativ": [
+            "quibus",
+            "quibus",
+            "quibus"
+          ],
+          "akkusativ": [
+            "quos",
+            "quas",
+            "quae"
+          ],
+          "ablativ": [
+            "quibus",
+            "quibus",
+            "quibus"
+          ]
+        }
+      },
+      "hinweis": "cum steht beim Relativpronomen nach dem Pronomen: quocum, quacum, quibuscum."
+    },
+    {
+      "typ": "deklination",
+      "titel": "Demonstrativpronomen iste, ista, istud",
+      "bedeutung": "dieser da, diese da, dieses da",
+      "formen": {
+        "singular": {
+          "nominativ": [
+            "iste",
+            "ista",
+            "istud"
+          ],
+          "genitiv": [
+            "istius",
+            "istius",
+            "istius"
+          ],
+          "dativ": [
+            "isti",
+            "isti",
+            "isti"
+          ],
+          "akkusativ": [
+            "istum",
+            "istam",
+            "istud"
+          ],
+          "ablativ": [
+            "isto",
+            "ista",
+            "isto"
+          ]
+        },
+        "plural": {
+          "nominativ": [
+            "isti",
+            "istae",
+            "ista"
+          ],
+          "genitiv": [
+            "istorum",
+            "istarum",
+            "istorum"
+          ],
+          "dativ": [
+            "istis",
+            "istis",
+            "istis"
+          ],
+          "akkusativ": [
+            "istos",
+            "istas",
+            "ista"
+          ],
+          "ablativ": [
+            "istis",
+            "istis",
+            "istis"
+          ]
+        }
+      }
+    },
+    {
+      "typ": "regel",
+      "titel": "Adverbien der i-Deklination",
+      "bildung": "Adjektivstamm + -iter",
+      "beispiele": [
+        {
+          "adjektiv": "gravis, -e",
+          "adverb": "graviter",
+          "deutsch": "auf ernste Art und Weise"
+        },
+        {
+          "adjektiv": "celer, celeris, celere",
+          "adverb": "celeriter",
+          "deutsch": "schnell"
+        },
+        {
+          "adjektiv": "prudens, prudentis",
+          "adverb": "prudenter",
+          "deutsch": "klug, auf kluge Art und Weise"
+        }
+      ]
+    },
+    {
+      "typ": "partizip",
+      "titel": "PPA und seine Übersetzung",
+      "beispiel": {
+        "verb": "monere",
+        "ppa": "monens, monentis"
+      },
+      "uebersetzungsmoeglichkeiten": [
+        "adverbialer Nebensatz: nachdem, während, als, wenn, indem",
+        "substantiviert mit Präposition: während, bei, dadurch, dass",
+        "Hauptsatz: und dabei, aber dennoch, und deshalb, trotzdem"
+      ]
+    },
+    {
+      "typ": "partizip",
+      "titel": "PPP Bildung und Verwendung",
+      "bildung": "Das PPP wird meist aus dem Supinstamm mit -tus, -ta, -tum oder -sus, -sa, -sum gebildet und wie ein Adjektiv der a-/o-Deklination dekliniert.",
+      "bedeutung": "vorzeitig und passiv: gelobt worden, nachdem er gelobt worden war",
+      "formen": [
+        {
+          "verb": "laudare",
+          "ppp": "laudatus, -a, -um",
+          "deutsch": "gelobt"
+        },
+        {
+          "verb": "monere",
+          "ppp": "monitus, -a, -um",
+          "deutsch": "ermahnt"
+        },
+        {
+          "verb": "mittere",
+          "ppp": "missus, -a, -um",
+          "deutsch": "geschickt"
+        },
+        {
+          "verb": "audire",
+          "ppp": "auditus, -a, -um",
+          "deutsch": "gehört"
+        }
+      ],
+      "hinweis": "Mit esse bildet das PPP die passiven Zeiten Perfekt, Plusquamperfekt und Futur II."
+    },
+    {
+      "typ": "partizip",
+      "titel": "Partizipien Überblick",
+      "formen": [
+        {
+          "partizip": "PPA",
+          "zeitverhaeltnis": "gleichzeitig",
+          "genus_verbi": "aktiv",
+          "beispiel": "laudans",
+          "deutsch": "lobend"
+        },
+        {
+          "partizip": "PPP",
+          "zeitverhaeltnis": "vorzeitig",
+          "genus_verbi": "passiv",
+          "beispiel": "laudatus",
+          "deutsch": "gelobt worden"
+        },
+        {
+          "partizip": "PFA",
+          "zeitverhaeltnis": "nachzeitig",
+          "genus_verbi": "aktiv",
+          "beispiel": "laudaturus",
+          "deutsch": "im Begriff zu loben"
+        }
+      ],
+      "hinweis": "Partizipien passen sich wie Adjektive in Kasus, Numerus und Genus an ihr Bezugswort an."
+    },
+    {
+      "typ": "partizip",
+      "titel": "PFA und Infinitiv Futur Aktiv",
+      "bildung": "PFA: PPP-Stamm + -urus, -ura, -urum. Infinitiv Futur Aktiv: PFA + esse.",
+      "beispiele": [
+        {
+          "verb": "laudare",
+          "pfa": "laudaturus, -a, -um",
+          "infinitiv_futur": "laudaturus esse"
+        },
+        {
+          "verb": "mittere",
+          "pfa": "missurus, -a, -um",
+          "infinitiv_futur": "missurus esse"
+        },
+        {
+          "verb": "ire",
+          "pfa": "iturus, -a, -um",
+          "infinitiv_futur": "iturus esse"
+        }
+      ],
+      "bedeutung": "nachzeitig aktiv: einer, der loben wird / im Begriff ist zu loben"
+    },
+    {
+      "typ": "deklination",
+      "titel": "e-Deklination – res, rei f.",
+      "muster": "res, rei f. – die Sache",
+      "formen": [
+        {
+          "kasus": "Nominativ",
+          "singular": "res",
+          "plural": "res"
+        },
+        {
+          "kasus": "Genitiv",
+          "singular": "rei",
+          "plural": "rerum"
+        },
+        {
+          "kasus": "Dativ",
+          "singular": "rei",
+          "plural": "rebus"
+        },
+        {
+          "kasus": "Akkusativ",
+          "singular": "rem",
+          "plural": "res"
+        },
+        {
+          "kasus": "Ablativ",
+          "singular": "re",
+          "plural": "rebus"
+        }
+      ]
+    },
+    {
+      "typ": "konjugation",
+      "titel": "velle",
+      "hinweis": "velle kann wie cupere mit einem Infinitiv oder einem AcI verbunden werden.",
+      "praesens": [
+        "volo",
+        "vis",
+        "vult",
+        "volumus",
+        "vultis",
+        "volunt"
+      ],
+      "imperfekt": [
+        "volebam",
+        "volebas",
+        "volebat",
+        "volebamus",
+        "volebatis",
+        "volebant"
+      ],
+      "futur": [
+        "volam",
+        "voles",
+        "volet",
+        "volemus",
+        "voletis",
+        "volent"
+      ],
+      "perfekt": [
+        "volui",
+        "voluisti",
+        "voluit",
+        "voluimus",
+        "voluistis",
+        "voluerunt"
+      ],
+      "plusquamperfekt": [
+        "volueram",
+        "volueras",
+        "voluerat",
+        "volueramus",
+        "volueratis",
+        "voluerant"
+      ],
+      "ppa": "volens, volentis"
+    },
+    {
+      "typ": "regel",
+      "titel": "Konjunktiv Imperfekt Aktiv und Passiv",
+      "bildung_aktiv": "Präsensinfinitiv + Personalendungen: rogarem, viderem, audirem, caperem, quaererem.",
+      "bildung_passiv": "Präsensinfinitiv + passive Personalendungen: rogarer, viderer, audirer, caperer, quaererer."
+    },
+    {
+      "typ": "regel",
+      "titel": "Konjunktiv Präsens Aktiv und Passiv",
+      "bildung_aktiv": "a-Konjugation: e als Moduszeichen; e-/i-/gemischte/konsonantische Konjugation: a als Moduszeichen + aktive Personalendungen.",
+      "bildung_passiv": "Moduszeichen wie im Aktiv + passive Personalendungen: -r, -ris, -tur, -mur, -mini, -ntur.",
+      "beispiele": [
+        {
+          "verb": "rogare",
+          "aktiv": [
+            "rogem",
+            "roges",
+            "roget",
+            "rogemus",
+            "rogetis",
+            "rogent"
+          ],
+          "passiv": [
+            "roger",
+            "rogeris",
+            "rogetur",
+            "rogemur",
+            "rogemini",
+            "rogentur"
+          ]
+        },
+        {
+          "verb": "videre",
+          "aktiv": [
+            "videam",
+            "videas",
+            "videat",
+            "videamus",
+            "videatis",
+            "videant"
+          ],
+          "passiv": [
+            "videar",
+            "videaris",
+            "videatur",
+            "videamur",
+            "videamini",
+            "videantur"
+          ]
+        }
+      ]
+    },
+    {
+      "typ": "regel",
+      "titel": "Konjunktiv Perfekt Aktiv und Passiv",
+      "bildung_aktiv": "Perfektstamm + -eri- + Personalendungen: rogaverim, rogaveris, rogaverit ...",
+      "bildung_passiv": "PPP + Konjunktiv Präsens von esse: laudatus sim, laudatus sis, laudatus sit ...",
+      "beispiele": [
+        {
+          "tempus": "Aktiv",
+          "verb": "rogare",
+          "formen": [
+            "rogaverim",
+            "rogaveris",
+            "rogaverit",
+            "rogaverimus",
+            "rogaveritis",
+            "rogaverint"
+          ]
+        },
+        {
+          "tempus": "Passiv",
+          "verb": "laudare",
+          "formen": [
+            "laudatus sim",
+            "laudatus sis",
+            "laudatus sit",
+            "laudati simus",
+            "laudati sitis",
+            "laudati sint"
+          ]
+        }
+      ]
+    },
+    {
+      "typ": "regel",
+      "titel": "Konjunktiv Plusquamperfekt Passiv",
+      "bildung": "PPP + Konjunktiv Imperfekt von esse: laudatus essem, laudatus esses, laudatus esset ...",
+      "beispiele": [
+        {
+          "person": "1. Sg.",
+          "form": "laudatus essem"
+        },
+        {
+          "person": "2. Sg.",
+          "form": "laudatus esses"
+        },
+        {
+          "person": "3. Sg.",
+          "form": "laudatus esset"
+        },
+        {
+          "person": "1. Pl.",
+          "form": "laudati essemus"
+        },
+        {
+          "person": "2. Pl.",
+          "form": "laudati essetis"
+        },
+        {
+          "person": "3. Pl.",
+          "form": "laudati essent"
+        }
+      ]
+    },
+    {
+      "typ": "regel",
+      "titel": "Konjunktiv Plusquamperfekt Aktiv",
+      "bildung": "Perfektstamm + -isse- + Personalendungen.",
+      "beispiele_3_plural": [
+        "rogavissent",
+        "vidissent",
+        "audivissent",
+        "cepissent",
+        "quaesivissent"
+      ],
+      "hinweis": "Bei ire verschmilzt das i des Perfektstamms mit dem i des Moduszeichens."
+    },
+    {
+      "typ": "regel",
+      "titel": "AcI und NcI",
+      "bildung": "AcI: Akkusativ + Infinitiv nach Verben des Sagens, Meinens, Wahrnehmens und Wissens. NcI: Nominativ + Infinitiv besonders im Passiv solcher Verben.",
+      "beispiele": [
+        {
+          "konstruktion": "AcI",
+          "latein": "Scio Marcum venire.",
+          "deutsch": "Ich weiß, dass Marcus kommt."
+        },
+        {
+          "konstruktion": "AcI vorzeitig",
+          "latein": "Scio Marcum venisse.",
+          "deutsch": "Ich weiß, dass Marcus gekommen ist."
+        },
+        {
+          "konstruktion": "NcI",
+          "latein": "Marcus venire dicitur.",
+          "deutsch": "Man sagt, dass Marcus kommt."
+        }
+      ],
+      "hinweis": "Der Infinitiv zeigt das Zeitverhältnis zum übergeordneten Prädikat an."
+    },
+    {
+      "typ": "regel",
+      "titel": "Ablativus absolutus",
+      "bildung": "Substantiv/Pronomen im Ablativ + Partizip im Ablativ. Die Konstruktion ist vom übrigen Satz grammatisch losgelöst.",
+      "beispiele": [
+        {
+          "latein": "Caesare veniente",
+          "deutsch": "als Caesar kam / während Caesar kam"
+        },
+        {
+          "latein": "Urbe capta",
+          "deutsch": "nachdem die Stadt erobert worden war"
+        },
+        {
+          "latein": "Cicerone consule",
+          "deutsch": "als Cicero Konsul war"
+        }
+      ],
+      "uebersetzungsmoeglichkeiten": [
+        "Temporalsatz",
+        "Kausalsatz",
+        "Konzessivsatz",
+        "Beiordnung mit und dabei / nachdem"
+      ]
+    },
+    {
+      "typ": "partizip",
+      "titel": "Gerundium und Gerundivum",
+      "bildung": "Gerundium: substantivierter Verbalbegriff im Genitiv, Dativ, Akkusativ mit ad und Ablativ. Gerundivum: Verbaladjektiv mit passivischer Notwendigkeit.",
+      "formen": [
+        {
+          "form": "Gerundium",
+          "beispiel": "ars legendi",
+          "deutsch": "die Kunst des Lesens"
+        },
+        {
+          "form": "Gerundium mit ad",
+          "beispiel": "ad legendum",
+          "deutsch": "zum Lesen"
+        },
+        {
+          "form": "Gerundivum",
+          "beispiel": "liber legendus",
+          "deutsch": "ein Buch, das gelesen werden muss"
+        }
+      ],
+      "hinweis": "Das Gerundivum stimmt mit seinem Bezugswort in Kasus, Numerus und Genus überein."
+    },
+    {
+      "typ": "regel",
+      "titel": "Steigerung von Adjektiven und Adverbien",
+      "formen": [
+        {
+          "stufe": "Positiv",
+          "adjektiv": "clarus",
+          "adverb": "clare",
+          "deutsch": "hell / berühmt"
+        },
+        {
+          "stufe": "Komparativ",
+          "adjektiv": "clarior, clarius",
+          "adverb": "clarius",
+          "deutsch": "heller / berühmter"
+        },
+        {
+          "stufe": "Superlativ",
+          "adjektiv": "clarissimus, -a, -um",
+          "adverb": "clarissime",
+          "deutsch": "am hellsten / sehr berühmt"
+        }
+      ],
+      "hinweis": "Der Komparativ wird nach der konsonantischen Deklination dekliniert; der Superlativ nach der a-/o-Deklination."
+    },
+    {
+      "typ": "deklination",
+      "titel": "u-Deklination – exercitus, manus und cornu",
+      "muster": "exercitus, -us m.; manus, -us f.; cornu, -us n.",
+      "formen": [
+        {
+          "kasus": "Nominativ Sg.",
+          "maskulin": "exercitus",
+          "feminin": "manus",
+          "neutrum": "cornu"
+        },
+        {
+          "kasus": "Genitiv Sg.",
+          "maskulin": "exercitus",
+          "feminin": "manus",
+          "neutrum": "cornus"
+        },
+        {
+          "kasus": "Dativ Sg.",
+          "maskulin": "exercitui",
+          "feminin": "manui",
+          "neutrum": "cornui"
+        },
+        {
+          "kasus": "Akkusativ Sg.",
+          "maskulin": "exercitum",
+          "feminin": "manum",
+          "neutrum": "cornu"
+        },
+        {
+          "kasus": "Ablativ Sg.",
+          "maskulin": "exercitu",
+          "feminin": "manu",
+          "neutrum": "cornu"
+        },
+        {
+          "kasus": "Nominativ Pl.",
+          "maskulin": "exercitus",
+          "feminin": "manus",
+          "neutrum": "cornua"
+        },
+        {
+          "kasus": "Genitiv Pl.",
+          "maskulin": "exercituum",
+          "feminin": "manuum",
+          "neutrum": "cornuum"
+        },
+        {
+          "kasus": "Dativ/Ablativ Pl.",
+          "maskulin": "exercitibus",
+          "feminin": "manibus",
+          "neutrum": "cornibus"
+        },
+        {
+          "kasus": "Akkusativ Pl.",
+          "maskulin": "exercitus",
+          "feminin": "manus",
+          "neutrum": "cornua"
+        }
+      ]
+    },
+    {
+      "typ": "deklination",
+      "titel": "a-Deklination – serva, servae f.",
+      "muster": "serva, servae f. – die Sklavin",
+      "formen": [
+        {
+          "kasus": "Nominativ",
+          "singular": "serva",
+          "plural": "servae"
+        },
+        {
+          "kasus": "Genitiv",
+          "singular": "servae",
+          "plural": "servarum"
+        },
+        {
+          "kasus": "Dativ",
+          "singular": "servae",
+          "plural": "servis"
+        },
+        {
+          "kasus": "Akkusativ",
+          "singular": "servam",
+          "plural": "servas"
+        },
+        {
+          "kasus": "Ablativ",
+          "singular": "serva",
+          "plural": "servis"
+        }
+      ]
+    },
+    {
+      "typ": "deklination",
+      "titel": "o-Deklination – avus und bellum",
+      "muster": "avus, avi m. – der Großvater; bellum, belli n. – der Krieg",
+      "formen": [
+        {
+          "kasus": "Nominativ Sg.",
+          "maskulin": "avus",
+          "neutrum": "bellum"
+        },
+        {
+          "kasus": "Genitiv Sg.",
+          "maskulin": "avi",
+          "neutrum": "belli"
+        },
+        {
+          "kasus": "Dativ Sg.",
+          "maskulin": "avo",
+          "neutrum": "bello"
+        },
+        {
+          "kasus": "Akkusativ Sg.",
+          "maskulin": "avum",
+          "neutrum": "bellum"
+        },
+        {
+          "kasus": "Ablativ Sg.",
+          "maskulin": "avo",
+          "neutrum": "bello"
+        },
+        {
+          "kasus": "Nominativ Pl.",
+          "maskulin": "avi",
+          "neutrum": "bella"
+        },
+        {
+          "kasus": "Genitiv Pl.",
+          "maskulin": "avorum",
+          "neutrum": "bellorum"
+        },
+        {
+          "kasus": "Dativ/Ablativ Pl.",
+          "maskulin": "avis",
+          "neutrum": "bellis"
+        },
+        {
+          "kasus": "Akkusativ Pl.",
+          "maskulin": "avos",
+          "neutrum": "bella"
+        }
+      ]
+    },
+    {
+      "typ": "deklination",
+      "titel": "Konsonantische Deklination – clamor, mater und litus",
+      "muster": "clamor, clamoris m. – der Lärm; mater, matris f. – die Mutter; litus, litoris n. – die Küste",
+      "formen": [
+        {
+          "kasus": "Nominativ Sg.",
+          "maskulin": "clamor",
+          "feminin": "mater",
+          "neutrum": "litus"
+        },
+        {
+          "kasus": "Genitiv Sg.",
+          "maskulin": "clamoris",
+          "feminin": "matris",
+          "neutrum": "litoris"
+        },
+        {
+          "kasus": "Dativ Sg.",
+          "maskulin": "clamori",
+          "feminin": "matri",
+          "neutrum": "litori"
+        },
+        {
+          "kasus": "Akkusativ Sg.",
+          "maskulin": "clamorem",
+          "feminin": "matrem",
+          "neutrum": "litus"
+        },
+        {
+          "kasus": "Ablativ Sg.",
+          "maskulin": "clamore",
+          "feminin": "matre",
+          "neutrum": "litore"
+        },
+        {
+          "kasus": "Nominativ/Akkusativ Pl.",
+          "maskulin": "clamores",
+          "feminin": "matres",
+          "neutrum": "litora"
+        },
+        {
+          "kasus": "Genitiv Pl.",
+          "maskulin": "clamorum",
+          "feminin": "matrum",
+          "neutrum": "litorum"
+        },
+        {
+          "kasus": "Dativ/Ablativ Pl.",
+          "maskulin": "clamoribus",
+          "feminin": "matribus",
+          "neutrum": "litoribus"
+        }
+      ]
+    },
+    {
+      "typ": "deklination",
+      "titel": "i-Deklination – civis, navis und mare",
+      "muster": "civis, civis m. – der Bürger; navis, navis f. – das Schiff; mare, maris n. – das Meer",
+      "formen": [
+        {
+          "kasus": "Nominativ Sg.",
+          "maskulin": "civis",
+          "feminin": "navis",
+          "neutrum": "mare"
+        },
+        {
+          "kasus": "Genitiv Sg.",
+          "maskulin": "civis",
+          "feminin": "navis",
+          "neutrum": "maris"
+        },
+        {
+          "kasus": "Dativ Sg.",
+          "maskulin": "civi",
+          "feminin": "navi",
+          "neutrum": "mari"
+        },
+        {
+          "kasus": "Akkusativ Sg.",
+          "maskulin": "civem",
+          "feminin": "navem",
+          "neutrum": "mare"
+        },
+        {
+          "kasus": "Ablativ Sg.",
+          "maskulin": "cive",
+          "feminin": "navi",
+          "neutrum": "mari"
+        },
+        {
+          "kasus": "Nominativ/Akkusativ Pl.",
+          "maskulin": "cives",
+          "feminin": "naves",
+          "neutrum": "maria"
+        },
+        {
+          "kasus": "Genitiv Pl.",
+          "maskulin": "civium",
+          "feminin": "navium",
+          "neutrum": "marium"
+        },
+        {
+          "kasus": "Dativ/Ablativ Pl.",
+          "maskulin": "civibus",
+          "feminin": "navibus",
+          "neutrum": "maribus"
+        }
+      ]
+    }
+  ]
+}

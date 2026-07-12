@@ -1,0 +1,14 @@
+{
+  "name": "VocaLat – Latein lernen",
+  "short_name": "VocaLat",
+  "description": "Vokabeln, Übungen und Grammatik für Latein.",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#f2e6cc",
+  "theme_color": "#8c1414",
+  "icons": [
+    { "src": "assets/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "assets/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" },
+    { "src": "assets/icon-1024.png", "sizes": "1024x1024", "type": "image/png", "purpose": "any" }
+  ]
+}
