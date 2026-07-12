@@ -1,0 +1,26 @@
+{
+  "version": 1,
+  "description": "Lokal geprüfte Übersetzungen für komplexe Schultexte. Der Abgleich ist gegenüber kleinen OCR-Fehlern tolerant.",
+  "entries": [
+    {
+      "latin": "Nessus centaurus rogatus est ab Deianira, ut se flumen Euhenum transferret: quam sublatam in flumine ipso violare voluit.",
+      "german": "Der Zentaur Nessus wurde von Deianira gebeten, sie über den Fluss Euhenus zu bringen. Nachdem er sie im Fluss selbst hochgehoben hatte, wollte er ihr Gewalt antun."
+    },
+    {
+      "latin": "Hoc Hercules cum intervenisset et Deianira cum fidem eius imploravisset, Nessum sagittis confixit.",
+      "german": "Als Herkules dies verhindert und Deianira seinen Schutz erfleht hatte, durchbohrte er Nessus mit Pfeilen."
+    },
+    {
+      "latin": "Ille moriens, cum sciret sagittas hydrae veneno tinctas quantam vim veneni habere, sanguinem suum exceptum Deianirae dedit et id philtrum esse dixit;",
+      "german": "Als jener im Sterben lag und wusste, wie stark das Gift der mit Hydragift getränkten Pfeile war, gab er Deianira sein aufgefangenes Blut und sagte, es sei ein Liebestrank."
+    },
+    {
+      "latin": "si vellet, ne se coniunx sperneret, eo iuberet se vestem eius attrahere.",
+      "german": "Wenn sie wolle, dass ihr Gemahl sie nicht verschmähe, solle sie sein Gewand damit bestreichen."
+    },
+    {
+      "latin": "Id Deianira credens conditum diligenter servavit.",
+      "german": "Deianira glaubte dies und bewahrte es, nachdem sie es versteckt hatte, sorgfältig auf."
+    }
+  ]
+}

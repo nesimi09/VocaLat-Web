@@ -288,7 +288,13 @@ button.card:hover { transform: translateY(-2px); border-color: rgba(168,120,51,.
 .source-note { margin: 5px 0 0; color: var(--muted); font-size: .72rem; line-height: 1.45; }
 .word-match.book-form, .word-match.exact { border-left-color: #3e8a4f; }
 .word-match.fallback { border-left-color: var(--gold); }
+.word-match.contextual { border-left-color: #7657a8; }
+.word-match.proper { border-left-color: #5b8293; }
 .word-match.corrected { border-left-color: #417eb2; }
+.document-detection { margin: 0; padding: 10px 11px; border-radius: 8px; color: #327943; background: rgba(62,138,79,.10); font-size: .8rem; line-height: 1.45; }
+.raw-ocr { border-top: 1px solid var(--line); padding-top: 10px; }
+.raw-ocr > summary { color: var(--muted); cursor: pointer; font-size: .78rem; font-weight: 700; }
+.raw-ocr pre { margin-top: 10px; }
 
 .category-card { display: flex; align-items: center; gap: 14px; min-height: 94px; transition: .18s ease; }
 .category-icon { display: grid; place-items: center; flex: 0 0 46px; width: 46px; height: 46px; border-radius: 12px; color: var(--red); background: rgba(140,20,20,.08); font-size: 1.35rem; }

@@ -71,16 +71,21 @@ export function tokenizeLatinText(text = "") {
     .filter(token => token.normalized);
 }
 
-const RESOLVED_STATUSES = new Set(["exact", "book-form", "fallback", "corrected", "ambiguous"]);
+const RESOLVED_STATUSES = new Set(["exact", "book-form", "fallback", "contextual", "proper", "corrected", "ambiguous"]);
+const SOURCE_PRIORITY = { glossary: 4, book: 3, fallback: 2, proper: 1 };
 
-export function analyzeBookText(text, vocabulary, grammarSections, maxLesson = null, fallbackEntries = [], morphologyAnalyses = new Map()) {
+export function analyzeBookText(text, vocabulary, grammarSections, maxLesson = null, fallbackEntries = [], morphologyAnalyses = new Map(), translationMemory = []) {
   const allowedVocabulary = vocabulary.filter(entry => maxLesson == null || Number(entry.lektion) <= Number(maxLesson));
+  const sourceLines = splitLatinUnits(text);
+  const sourceTokens = sourceLines.flatMap(line => tokenizeLatinText(line));
   const descriptors = [
     ...allowedVocabulary.map(bookDescriptor),
     ...fallbackEntries.map(fallbackDescriptor)
   ];
-  const index = buildVocabularyIndex(descriptors);
-  const sourceLines = splitLatinUnits(text);
+  const baseIndex = buildVocabularyIndex(descriptors);
+  const unresolvedCapitalizedTokens = sourceTokens.filter(token => !baseIndex.words.has(token.normalized) && !baseIndex.forms.has(token.normalized));
+  const properNames = properNameDescriptors(unresolvedCapitalizedTokens);
+  const index = properNames.length ? buildVocabularyIndex([...descriptors, ...properNames]) : baseIndex;
   const lineAnalyses = sourceLines.map(line => {
     const tokens = tokenizeLatinText(line);
     return { source: line, tokens, matches: analyzeTokens(tokens, index, morphologyAnalyses) };
@@ -95,10 +100,17 @@ export function analyzeBookText(text, vocabulary, grammarSections, maxLesson = n
     addGrammarRule(grammar, grammarSections, "Präsens Aktiv", "Eine finite Verbform im Präsens Aktiv wurde über Person und Numerus bestimmt.", false);
   }
 
+  const translatedLines = lineAnalyses.map(line => {
+    const verified = findTranslationMemoryMatch(line.source, translationMemory);
+    return { text: verified?.german || translateLatinLine(line.matches), verified: Boolean(verified) };
+  });
+
   return {
     text: String(text).trim(),
     correctedText: lineAnalyses.map(line => line.matches.map(match => match.canonicalForm || match.token).join(" ")).join("\n"),
-    translation: lineAnalyses.map(line => translateLatinLine(line.matches)).join("\n"),
+    translation: translatedLines.map(line => line.text).join("\n"),
+    verifiedLines: translatedLines.filter(line => line.verified).length,
+    translationVerified: translatedLines.length > 0 && translatedLines.every(line => line.verified),
     maxLesson,
     tokenCount: tokens.length,
     coveredWords,
@@ -108,6 +120,34 @@ export function analyzeBookText(text, vocabulary, grammarSections, maxLesson = n
     draft: matches.map(match => RESOLVED_STATUSES.has(match.status) ? match.entries[0].deutsch : `[${match.token}]`).join(" · "),
     grammar
   };
+}
+
+function findTranslationMemoryMatch(source, entries) {
+  const sourceTokens = tokenizeLatinText(source).map(token => token.normalized);
+  if (sourceTokens.length < 4) return null;
+  let best = null;
+  for (const entry of entries || []) {
+    const candidateTokens = tokenizeLatinText(entry.latin).map(token => token.normalized);
+    const denominator = Math.max(sourceTokens.length, candidateTokens.length, 1);
+    const similarity = 1 - tokenSequenceDistance(sourceTokens, candidateTokens) / denominator;
+    if (similarity >= .88 && (!best || similarity > best.similarity)) best = { ...entry, similarity };
+  }
+  return best;
+}
+
+function tokenSequenceDistance(left, right) {
+  const previous = Array.from({ length: right.length + 1 }, (_, index) => index);
+  for (let row = 1; row <= left.length; row += 1) {
+    const current = [row];
+    for (let column = 1; column <= right.length; column += 1) {
+      const wordDistance = left[row - 1] === right[column - 1] ? 0
+        : Math.min(left[row - 1].length, right[column - 1].length) >= 5 && levenshtein(left[row - 1], right[column - 1]) === 1 ? .25
+          : 1;
+      current[column] = Math.min(current[column - 1] + 1, previous[column] + 1, previous[column - 1] + wordDistance);
+    }
+    previous.splice(0, previous.length, ...current);
+  }
+  return previous[right.length];
 }
 
 function splitLatinUnits(text) {
@@ -140,7 +180,15 @@ function analyzeTokens(tokens, index, morphologyAnalyses) {
     const externalMorphology = morphologyAnalyses.get(token.normalized) || [];
     const formRecords = mergeFormRecords(resolveFormRecords(token.normalized, index.forms), resolveMorphologyRecords(token.normalized, morphologyAnalyses, index));
     if (headwordEntries.length) {
-      matches.push(classifyExactMatch(token.raw, headwordEntries, 1, formRecords, token.normalized));
+      const directMorphologyRecords = formRecords.filter(record => record.directLemma);
+      const directLemmas = new Set(directMorphologyRecords.map(record => normalizeLatinWord(record.entry.lemma)));
+      if (directLemmas.size === 1 && !directLemmas.has(token.normalized)) {
+        matches.push(classifyFormMatch(token.raw, directMorphologyRecords, token.normalized));
+      } else if (directMorphologyRecords.length) {
+        matches.push(classifyExactMatch(token.raw, [...directMorphologyRecords.map(record => record.entry), ...headwordEntries], 1, formRecords, token.normalized));
+      } else {
+        matches.push(classifyExactMatch(token.raw, headwordEntries, 1, formRecords, token.normalized));
+      }
     } else if (formRecords.length) {
       matches.push(classifyFormMatch(token.raw, formRecords, token.normalized));
     } else {
@@ -168,11 +216,10 @@ function analyzeTokens(tokens, index, morphologyAnalyses) {
 function resolveMorphologyRecords(token, analyses, index) {
   const records = [];
   for (const analysis of analyses.get(token) || []) {
-    const entries = analysis.forms.flatMap(form => [
-      ...(index.words.get(form) || []),
-      ...(index.forms.get(form) || []).map(record => record.entry)
-    ]);
-    for (const entry of preferredEntries(entries)) records.push({ form: token, entry, morphology: analysis.morphology });
+    const directEntries = index.words.get(analysis.forms[0]) || [];
+    const generatedEntries = analysis.forms.flatMap(form => (index.forms.get(form) || []).map(record => record.entry));
+    const entries = directEntries.length ? directEntries : generatedEntries;
+    for (const entry of preferredEntries(entries)) records.push({ form: token, entry, morphology: analysis.morphology, directLemma: directEntries.includes(entry) });
   }
   return records;
 }
@@ -203,14 +250,58 @@ function fallbackDescriptor(entry) {
   return {
     lemma: entry.lemma,
     latein: entry.lemma,
-    grammatik: entry.forms.slice(1).join(", "),
+    grammatik: entry.grammatik || entry.forms.slice(1).join(", "),
     deutsch: entry.meanings.join(", "),
     lektion: null,
     forms: entry.forms,
     meanings: entry.meanings,
     pos: entry.pos,
-    source: "fallback"
+    source: entry.source || "fallback"
   };
+}
+
+function properNameDescriptors(tokens) {
+  const descriptors = new Map();
+  for (const token of tokens) {
+    if (!/^\p{Lu}/u.test(token.raw) || token.normalized.length < 3) continue;
+    const lemma = inferProperLemma(token.raw);
+    const key = normalizeLatinWord(lemma);
+    if (!key || descriptors.has(key)) continue;
+    const forms = properNameForms(lemma);
+    descriptors.set(key, {
+      lemma,
+      latein: lemma,
+      grammatik: "Eigenname",
+      deutsch: lemma,
+      lektion: null,
+      forms,
+      meanings: [lemma],
+      pos: "proper",
+      source: "proper"
+    });
+  }
+  return [...descriptors.values()];
+}
+
+function inferProperLemma(value) {
+  const normalized = normalizeLatinWord(value);
+  const lemma = normalized.endsWith("um") ? `${normalized.slice(0, -2)}us`
+    : normalized.endsWith("ae") || normalized.endsWith("am") ? `${normalized.slice(0, -2)}a`
+      : normalized;
+  return lemma[0].toLocaleUpperCase("la") + lemma.slice(1);
+}
+
+function properNameForms(lemma) {
+  const normalized = normalizeLatinWord(lemma);
+  if (normalized.endsWith("us")) {
+    const stem = normalized.slice(0, -2);
+    return [lemma, `${stem}i`, `${stem}o`, `${stem}um`, `${stem}e`];
+  }
+  if (normalized.endsWith("a")) {
+    const stem = normalized.slice(0, -1);
+    return [lemma, `${stem}ae`, `${stem}am`, `${stem}a`];
+  }
+  return [lemma];
 }
 
 function buildVocabularyIndex(entries) {
@@ -267,10 +358,11 @@ function longestPhraseMatch(tokens, start, phrases) {
 
 function classifyExactMatch(token, entries, length, formRecords = [], canonicalForm = null) {
   const senses = preferredEntries(entries);
+  const status = senses.length > 1 ? "ambiguous" : statusForSource(senses[0]?.source, false);
   return {
     token,
     normalized: normalizeLatinWord(token),
-    status: senses.length === 1 ? "exact" : "ambiguous",
+    status,
     entries: senses,
     morphology: preferredRecords(formRecords, senses).map(record => record.morphology).filter(Boolean),
     canonicalForm: displayCanonicalForm(token, canonicalForm),
@@ -282,7 +374,7 @@ function classifyFormMatch(token, records, canonicalForm, forcedStatus = null) {
   const entries = preferredEntries(records.map(record => record.entry));
   const selectedRecords = preferredRecords(records, entries);
   const source = entries[0]?.source;
-  const status = forcedStatus || (source === "book" ? "book-form" : "fallback");
+  const status = forcedStatus || statusForSource(source, true);
   return { token, normalized: normalizeLatinWord(token), status, entries, morphology: selectedRecords.map(record => record.morphology).filter(Boolean), canonicalForm: displayCanonicalForm(token, canonicalForm), length: 1 };
 }
 
@@ -293,8 +385,15 @@ function displayCanonicalForm(original, canonical) {
 
 function preferredEntries(entries) {
   const distinct = distinctEntries(entries);
-  const bookEntries = distinct.filter(entry => entry.source === "book");
-  return bookEntries.length ? bookEntries : distinct;
+  const highestPriority = Math.max(0, ...distinct.map(entry => SOURCE_PRIORITY[entry.source] || 0));
+  return distinct.filter(entry => (SOURCE_PRIORITY[entry.source] || 0) === highestPriority);
+}
+
+function statusForSource(source, inflected) {
+  if (source === "book") return inflected ? "book-form" : "exact";
+  if (source === "glossary") return "contextual";
+  if (source === "proper") return "proper";
+  return "fallback";
 }
 
 function preferredRecords(records, entries) {
@@ -367,7 +466,7 @@ function isSafeOcrSubstitution(left, right) {
 }
 
 function recordPriority(records) {
-  return records.some(record => record.entry.source === "book") ? 2 : 1;
+  return Math.max(0, ...records.map(record => SOURCE_PRIORITY[record.entry.source] || 0));
 }
 
 function latinFormsFromGrammar(grammar = "") {

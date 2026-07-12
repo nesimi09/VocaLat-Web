@@ -1,4 +1,5 @@
 import { analyzeBookText, answerMatches, answerOptionState, shuffledUniqueMeanings } from "./learning-engine.js";
+import { extractLatinDocument } from "./document-analysis.js";
 import { analyzeLatinMorphology, prepareMorphology } from "./morphology.js";
 import { recognizeLatinText, validateOcrImage } from "./ocr.js";
 
@@ -25,12 +26,13 @@ const state = {
   search: "", lesson: "all", favoritesOnly: false,
   practiceLesson: "all", mode: "typed", practiceSet: [], questionIndex: 0,
   revealed: false, selectedChoice: null, feedback: null, answerRecorded: false, typedAnswer: "",
-  translationLesson: "all", translationText: "", translationImage: null, translationImageUrl: null,
+  translationLesson: "all", translationText: "", translationRawText: "", translationImage: null, translationImageUrl: null,
   translationBusy: false, translationProgress: 0, translationStatus: "", translationError: "",
   translationConfidence: null, translationAnalysis: null,
   translationMorphology: new Map(),
+  translationGlossary: [], translationDocument: null,
   translationJob: 0,
-  fallbackVocabulary: [],
+  fallbackVocabulary: [], translationMemory: [],
   progress: loadProgress()
 };
 
@@ -257,11 +259,12 @@ function renderOcrStatus() {
 function renderTranslationResults() {
   const analysis = state.translationAnalysis;
   if (!analysis) return "";
-  const statusLabels = { exact: "Buchvokabel", "book-form": "Buchform", fallback: "Zusatzwörterbuch", corrected: "OCR korrigiert", ambiguous: "Buchbedeutung", candidate: "Form prüfen", unknown: "Nicht gefunden" };
+  const statusLabels = { exact: "Buchvokabel", "book-form": "Buchform", fallback: "Zusatzwörterbuch", contextual: "Bildvokabel", proper: "Eigenname", corrected: "OCR korrigiert", ambiguous: "Buchbedeutung", candidate: "Form prüfen", unknown: "Nicht gefunden" };
+  const sourceLabel = entry => entry.source === "book" ? `Lektion ${entry.lektion}` : entry.source === "glossary" ? "Fußnote im Bild" : entry.source === "proper" ? "Eigenname" : "FreeDict-Zusatzwörterbuch";
   const wordRows = analysis.matches.map(match => {
     const morphology = formatMorphology(match.morphology);
     const details = match.entries.length
-      ? `<div class="match-entries">${match.entries.slice(0, 3).map(entry => `<div><strong>${escapeHtml(entry.latein)}</strong><span>${escapeHtml(entry.deutsch)}</span><small>${entry.source === "book" ? `Lektion ${entry.lektion}` : "FreeDict-Zusatzwörterbuch"}${entry.grammatik ? ` · ${escapeHtml(entry.grammatik)}` : ""}</small></div>`).join("")}${morphology ? `<span class="form-label">${escapeHtml(morphology)}</span>` : ""}</div>`
+      ? `<div class="match-entries">${match.entries.slice(0, 3).map(entry => `<div><strong>${escapeHtml(entry.latein)}</strong><span>${escapeHtml(entry.deutsch)}</span><small>${sourceLabel(entry)}${entry.grammatik ? ` · ${escapeHtml(entry.grammatik)}` : ""}</small></div>`).join("")}${morphology ? `<span class="form-label">${escapeHtml(morphology)}</span>` : ""}</div>`
       : `<p class="meta">Keine sichere Bedeutung gefunden.</p>`;
     return `<article class="word-match ${match.status}"><div class="word-match-head"><strong>${escapeHtml(match.token)}</strong><span>${statusLabels[match.status]}</span></div>${details}</article>`;
   }).join("");
@@ -274,13 +277,14 @@ function renderTranslationResults() {
 
   return `<section class="translation-results" aria-live="polite">
     <section class="card final-translation">
-      <div class="card-top"><h2>Übersetzungsvorschlag</h2><span class="coverage-badge">${analysis.coverage} % Vokabeln</span></div>
+      <div class="card-top"><h2>${analysis.translationVerified ? "Geprüfte Übersetzung" : "Übersetzungsvorschlag"}</h2><span class="coverage-badge">${analysis.translationVerified ? "Lokal geprüft" : `${analysis.coverage} % Vokabeln`}</span></div>
       <div class="translated-lines">${translationLines || `<p>Keine Übersetzung möglich.</p>`}</div>
       ${analysis.unresolvedWords ? `<small>${analysis.unresolvedWords} ${analysis.unresolvedWords === 1 ? "Stelle konnte" : "Stellen konnten"} nicht sicher aufgelöst werden.</small>` : ""}
     </section>
     <details class="card analysis-details">
       <summary>Text und Formen prüfen</summary>
       <div class="analysis-content">
+        ${state.translationDocument?.detected ? `<p class="document-detection">✓ Lateinischer Haupttext automatisch ausgewählt; Einleitung, Logo und Fußnoten wurden nicht mitübersetzt.</p>` : ""}
         <h3>Korrigierter OCR-Text</h3>
         <pre>${escapeHtml(analysis.correctedText)}</pre>
         ${Number.isFinite(state.translationConfidence) ? `<p class="meta">OCR-Konfidenz: ${state.translationConfidence} % · Akzente und Makron-Verwechslungen wurden für die Formenprüfung normalisiert.</p>` : ""}
@@ -288,7 +292,8 @@ function renderTranslationResults() {
         <div class="word-analysis">${wordRows}</div>
         <h3>Grammatik</h3>
         ${grammar}
-        <p class="source-note">Buchvokabeln haben Vorrang. Fehlende Bedeutungen stammen aus dem mitgelieferten FreeDict-Wörterbuch (GPL-3.0-or-later).</p>
+        ${state.translationRawText && state.translationRawText.trim() !== state.translationText.trim() ? `<details class="raw-ocr"><summary>Vollständigen OCR-Text anzeigen</summary><pre>${escapeHtml(state.translationRawText)}</pre></details>` : ""}
+        <p class="source-note">Vokabeln aus Bildfußnoten und dem Schulbuch haben Vorrang. Fehlende Bedeutungen stammen aus dem mitgelieferten FreeDict-Wörterbuch (GPL-3.0-or-later).</p>
       </div>
     </details>
   </section>`;
@@ -327,7 +332,7 @@ async function runOcr() {
     const result = await recognizeLatinText(file, updateOcrProgress);
     if (job !== state.translationJob || file !== state.translationImage) return;
     if (!result.text.trim()) throw new Error("Auf dem Bild wurde kein lateinischer Text erkannt.");
-    state.translationText = result.text;
+    state.translationRawText = result.text;
     state.translationConfidence = result.confidence;
     state.translationStatus = "Formen und OCR-Fehler werden geprüft …";
     updateOcrProgress({ status: "checking morphology", progress: .96 });
@@ -335,6 +340,9 @@ async function runOcr() {
     if (job !== state.translationJob) return;
     state.translationMorphology = await analyzeLatinMorphology(result.text).catch(() => new Map());
     if (job !== state.translationJob) return;
+    state.translationDocument = extractLatinDocument(result.text, state.translationMorphology);
+    state.translationText = state.translationDocument.latinText;
+    state.translationGlossary = state.translationDocument.glossary;
     applyBookAnalysis();
   } catch (error) {
     if (job === state.translationJob) state.translationError = friendlyOcrError(error);
@@ -389,6 +397,10 @@ async function runBookAnalysis() {
     renderTranslate();
     state.translationMorphology = await analyzeLatinMorphology(text).catch(() => new Map());
     if (job !== state.translationJob) return;
+    state.translationDocument = extractLatinDocument(text, state.translationMorphology);
+    state.translationRawText = text;
+    state.translationText = state.translationDocument.latinText;
+    state.translationGlossary = state.translationDocument.glossary;
     applyBookAnalysis();
   } finally {
     if (job !== state.translationJob) return;
@@ -404,7 +416,7 @@ async function runBookAnalysis() {
 
 function applyBookAnalysis() {
   const maxLesson = state.translationLesson === "all" ? null : Number(state.translationLesson);
-  state.translationAnalysis = analyzeBookText(state.translationText, state.vocabulary, state.grammar, maxLesson, state.fallbackVocabulary, state.translationMorphology);
+  state.translationAnalysis = analyzeBookText(state.translationText, state.vocabulary, state.grammar, maxLesson, [...state.translationGlossary, ...state.fallbackVocabulary], state.translationMorphology, state.translationMemory);
   if (state.translationAnalysis.correctedText) state.translationText = state.translationAnalysis.correctedText;
 }
 
@@ -416,10 +428,13 @@ function selectTranslationImage(file) {
     state.translationImage = file;
     state.translationImageUrl = URL.createObjectURL(file);
     state.translationText = "";
+    state.translationRawText = "";
     state.translationError = "";
     state.translationConfidence = null;
     state.translationAnalysis = null;
     state.translationMorphology = new Map();
+    state.translationGlossary = [];
+    state.translationDocument = null;
     renderTranslate();
     void runOcr();
   } catch (error) {
@@ -552,8 +567,11 @@ document.addEventListener("input", event => {
   if (event.target.id === "typed-answer") state.typedAnswer = event.target.value;
   if (event.target.id === "latin-text") {
     state.translationText = event.target.value;
+    state.translationRawText = "";
     state.translationAnalysis = null;
     state.translationMorphology = new Map();
+    state.translationGlossary = [];
+    state.translationDocument = null;
     state.translationError = "";
     const results = document.querySelector("#translation-results");
     if (results) results.innerHTML = "";
@@ -616,11 +634,12 @@ document.addEventListener("submit", event => {
 
 async function init() {
   try {
-    const [vocabularyResponse, grammarResponse, fallbackResponse] = await Promise.all([fetch("data/vocabulary.json"), fetch("data/grammar.json"), fetch("data/fallback-lexicon.json")]);
+    const [vocabularyResponse, grammarResponse, fallbackResponse, memoryResponse] = await Promise.all([fetch("data/vocabulary.json"), fetch("data/grammar.json"), fetch("data/fallback-lexicon.json"), fetch("data/translation-memory.json")]);
     if (!vocabularyResponse.ok || !grammarResponse.ok) throw new Error("Inhalte konnten nicht geladen werden.");
     state.vocabulary = (await vocabularyResponse.json()).filter(v => v.latein?.trim() && v.deutsch?.trim() && !v.grammatik?.toLocaleLowerCase("de").includes("unsicher"));
     state.grammar = (await grammarResponse.json()).abschnitte || [];
     state.fallbackVocabulary = fallbackResponse.ok ? (await fallbackResponse.json()).entries || [] : [];
+    state.translationMemory = memoryResponse.ok ? (await memoryResponse.json()).entries || [] : [];
     const hash = location.hash.slice(1); if (NAV.some(n => n.id === hash)) state.route = hash;
     startPractice(); render();
   } catch (error) {
