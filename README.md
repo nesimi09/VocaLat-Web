@@ -17,7 +17,11 @@ Responsive Web-Version der VocaLat-iOS-App mit allen Vokabeln, Grammatikabschnit
 
 Der kleine App-Rahmen und das Zusatzwörterbuch werden bei der PWA-Installation offline gespeichert. Die größeren OCR- und Formendateien lädt die App erst bei der ersten Übersetzung von derselben Website und legt sie anschließend im separaten Runtime-Cache ab. Bild und Text werden nicht an eine externe OCR-, Übersetzungs- oder KI-API gesendet. Besucher der GitHub Page müssen nichts installieren oder manuell herunterladen.
 
-Nach der Bildauswahl startet die Verarbeitung automatisch. Auf gemischten Arbeitsblättern wird der lateinische Haupttext von Logos, deutschen Einleitungen, Überschriften, Wortzahlen und Fußnoten getrennt; Vokabelhilfen aus dem Bild werden trotzdem als Kontext übernommen. Makron-/Akzentvarianten werden normalisiert, ein fehlender oder verwechselter Buchstabe kann über bekannte Wortformen korrigiert werden, und Flexionsformen werden auf ihre Lemmata zurückgeführt. Die sichtbare Übersetzung bevorzugt immer das Schulbuch. Für fehlende Lemmata steht ein lokal mitgeliefertes FreeDict-Wörterbuch mit 5.454 Einträgen bereit. Fehlende Grammatikhilfen werden lokal aus den erkannten Formen ergänzt; die eingeklappte Detailansicht zeigt Korrekturen, Formen und Regeln. Für geprüfte komplexe Schultexte kann eine lokale, OCR-tolerante Übersetzungsvorlage verwendet werden.
+Nach der Bildauswahl startet die Verarbeitung automatisch. Auf gemischten Arbeitsblättern wird der lateinische Haupttext von Logos, deutschen Einleitungen, Überschriften, Wortzahlen und Fußnoten getrennt; Vokabelhilfen aus dem Bild werden trotzdem als Kontext übernommen. Makron-/Akzentvarianten werden normalisiert, ein fehlender oder verwechselter Buchstabe kann über bekannte Wortformen korrigiert werden, und Flexionsformen werden auf ihre Lemmata zurückgeführt. Die sichtbare Übersetzung bevorzugt immer das Schulbuch. Für fehlende Lemmata steht ein lokal mitgeliefertes FreeDict-Wörterbuch mit 5.484 Einträgen bereit. Fehlende Grammatikhilfen werden lokal aus den erkannten Formen ergänzt; die eingeklappte Detailansicht zeigt Korrekturen, Formen und Regeln.
+
+Die lokale Referenzbasis enthält selbst formulierte und geprüfte deutsche Übersetzungen von 61 Abschnitten gemeinfreier Schultexte aus Hyginus, Caesar, Cicero, Phaedrus, Cornelius Nepos, Seneca, Sallust, Ovid und Livius. Der Abgleich funktioniert auch bei fehlenden Satzzeichen und einzelnen ausgelassenen oder verwechselten OCR-Buchstaben. Eine Negation oder ein ganzes fehlendes Wort wird aus Sicherheitsgründen nicht stillschweigend ergänzt. Unbekannte komplexe Sätze werden analysiert, aber nicht mehr als scheinbar sichere Wortsalat-Übersetzung ausgegeben; nur eng begrenzte, getestete einfache Satzmuster erhalten einen ungeprüften Vorschlag.
+
+Zusätzlich zum Satzkorpus liegen Regressionstests mit den echten OCR-Ausgaben der Arbeitsblätter „Nessus“, „Triptolemus“ und „Lupus et agnus“ vor. Sie decken Seiten ohne Leerzeilen, gemischte deutsch-lateinische Blöcke, mehrere Vokabelhilfen pro Fußnotenzeile, große Absatzabstände und fehlerhafte Zeilennummern ab.
 
 Tesseract.js 7.0.0, Tesseract.js Core 7.0.0 und das lateinische Tesseract-Sprachmodell sind lokal unter `vendor/tesseract` hinterlegt. Die zugehörigen Lizenztexte liegen im selben Verzeichnis.
 
@@ -37,5 +41,6 @@ Danach `http://localhost:8080` öffnen.
 
 ```bash
 npm test
+npm run test:corpus
 npm run check
 ```

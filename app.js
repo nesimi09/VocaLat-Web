@@ -277,7 +277,7 @@ function renderTranslationResults() {
 
   return `<section class="translation-results" aria-live="polite">
     <section class="card final-translation">
-      <div class="card-top"><h2>${analysis.translationVerified ? "Geprüfte Übersetzung" : "Übersetzungsvorschlag"}</h2><span class="coverage-badge">${analysis.translationVerified ? "Lokal geprüft" : `${analysis.coverage} % Vokabeln`}</span></div>
+      <div class="card-top"><h2>${analysis.translationVerified ? "Geprüfte Übersetzung" : analysis.translationReliable ? "Übersetzungsvorschlag" : "Keine sichere Übersetzung"}</h2><span class="coverage-badge">${analysis.translationVerified ? "Lokal geprüft" : `${analysis.coverage} % Vokabeln`}</span></div>
       <div class="translated-lines">${translationLines || `<p>Keine Übersetzung möglich.</p>`}</div>
       ${analysis.unresolvedWords ? `<small>${analysis.unresolvedWords} ${analysis.unresolvedWords === 1 ? "Stelle konnte" : "Stellen konnten"} nicht sicher aufgelöst werden.</small>` : ""}
     </section>

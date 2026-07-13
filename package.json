@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "test": "node --test tests/*.test.js",
-    "check": "node --check app.js && node --check learning-engine.js && node --check document-analysis.js && node --check morphology.js && node --check ocr.js && node --check service-worker.js && npm test"
+    "test:corpus": "node scripts/evaluate-translation-corpus.mjs",
+    "check": "node --check app.js && node --check learning-engine.js && node --check document-analysis.js && node --check morphology.js && node --check ocr.js && node --check service-worker.js && node --check scripts/evaluate-translation-corpus.mjs && npm test && npm run test:corpus"
   }
 }

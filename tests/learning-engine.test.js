@@ -183,6 +183,23 @@ test("verified complex passages replace word salad and tolerate a small OCR erro
   assert.doesNotMatch(result.translation, /\[[^\]]+\]|Frage es gibt|die Sitte/);
 });
 
+test("unverified complex prose never appears as a confident word-salad translation", () => {
+  const fallback = [
+    { lemma: "puella", forms: ["puella", "puellae"], pos: "n", meanings: ["Mädchen"] },
+    { lemma: "amo", forms: ["amo", "amare"], pos: "v", meanings: ["lieben"] },
+    { lemma: "venio", forms: ["venio", "venire"], pos: "v", meanings: ["kommen"] },
+    { lemma: "cum", forms: ["cum"], pos: "conj", meanings: ["als"] }
+  ];
+  const morphology = new Map([
+    ["puella", [{ forms: ["puella"], morphology: { part: "n", case: "nominative", number: "singular" } }]],
+    ["amat", [{ forms: ["amo"], morphology: { part: "v", mood: "indicative", tense: "present", voice: "active", person: 3, number: "singular" } }]],
+    ["venit", [{ forms: ["venio"], morphology: { part: "v", mood: "indicative", tense: "present", voice: "active", person: 3, number: "singular" } }]]
+  ]);
+  const result = analyzeBookText("Cum puella venit, amat.", [], [], null, fallback, morphology);
+  assert.equal(result.translationReliable, false);
+  assert.equal(result.translation, "");
+});
+
 test("OCR cleanup joins line-break hyphenation without changing paragraphs", () => {
   assert.equal(cleanOcrText("Ami-\n cus   venit.\n\n\nSalve!"), "Amicus venit.\n\nSalve!");
 });

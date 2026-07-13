@@ -24,6 +24,10 @@ export function prepareMorphology() {
 
 export async function analyzeLatinMorphology(text) {
   const engine = await prepareMorphology();
+  return analyzeLatinMorphologyWithEngine(text, engine);
+}
+
+export function analyzeLatinMorphologyWithEngine(text, engine) {
   const words = [...new Set(String(text).match(/[\p{L}\p{M}]+/gu)?.map(normalizeLatin) || [])].filter(Boolean);
   const analyses = new Map();
   for (const word of words) analyses.set(word, parseWord(engine, word));

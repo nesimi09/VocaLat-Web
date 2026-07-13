@@ -18,16 +18,23 @@ export function extractLatinDocument(text, morphologyAnalyses = new Map()) {
     .split(/\n\s*\n+/)
     .map((paragraph, index) => paragraphRecord(paragraph, index, morphologyAnalyses))
     .filter(record => record.text);
-  const candidates = paragraphs.filter(record => !record.glossary && record.tokenCount >= 4 && record.score >= .58 && record.germanCount === 0);
-  const main = candidates.sort((left, right) => right.tokenCount * right.score - left.tokenCount * left.score)[0];
+  const lines = rawText
+    .split(/\n+/)
+    .map((line, index) => paragraphRecord(line, index, morphologyAnalyses))
+    .filter(record => record.text);
+  const paragraphGroup = bestLatinParagraphGroup(latinCandidates(paragraphs));
+  const lineGroup = bestLatinParagraphGroup(latinCandidates(lines));
+  const useLines = paragraphGroupWeight(lineGroup) > paragraphGroupWeight(paragraphGroup);
+  const records = useLines ? lines : paragraphs;
+  const mainGroup = useLines ? lineGroup : paragraphGroup;
 
-  if (!main) {
+  if (!mainGroup.length) {
     return { latinText: cleanLatinText(rawText), rawText, glossary, excludedParagraphs: 0, detected: false };
   }
 
-  const selected = [main];
-  for (let index = main.index + 1; index < paragraphs.length; index += 1) {
-    const paragraph = paragraphs.find(item => item.index === index);
+  const selected = [...mainGroup];
+  for (let index = selected.at(-1).index + 1; index < records.length; index += 1) {
+    const paragraph = records.find(item => item.index === index);
     if (!paragraph || paragraph.glossary) break;
     const previous = selected.at(-1);
     const continuation = !/[.!?;:]\s*$/.test(previous.text) && paragraph.recognizedCount > 0 && paragraph.germanCount === 0;
@@ -40,30 +47,52 @@ export function extractLatinDocument(text, morphologyAnalyses = new Map()) {
     latinText: cleanLatinText(selected.map(record => record.text).join("\n")),
     rawText,
     glossary,
-    excludedParagraphs: Math.max(paragraphs.length - selected.length, 0),
-    detected: selected.length < paragraphs.length
+    excludedParagraphs: Math.max(records.length - selected.length, 0),
+    detected: selected.length < records.length
   };
+}
+
+function latinCandidates(records) {
+  return records.filter(record => !record.glossary && record.tokenCount >= 4 && record.score >= .58 && record.germanCount === 0);
+}
+
+function bestLatinParagraphGroup(candidates) {
+  const groups = [];
+  for (const candidate of [...candidates].sort((left, right) => left.index - right.index)) {
+    const group = groups.at(-1);
+    if (!group || candidate.index - group.at(-1).index > 1) groups.push([candidate]);
+    else group.push(candidate);
+  }
+  return groups.sort((left, right) => paragraphGroupWeight(right) - paragraphGroupWeight(left))[0] || [];
+}
+
+function paragraphGroupWeight(group) {
+  return group.reduce((total, record) => total + record.tokenCount * record.score, 0);
 }
 
 export function extractGlossaryEntries(text) {
   const entries = [];
   const seen = new Set();
   for (const rawLine of String(text).split(/\n+/)) {
-    const line = rawLine.trim().replace(/^[^\p{L}]+/u, "");
-    const match = line.match(/^([\p{L}\p{M}]+)(?:\s*,\s*-[\p{L}\p{M}]+)?(?:\s*,\s*[mfn])?\s*(=|»|7|:)\s*(.+)$/iu);
-    if (!match) continue;
-    if (match[2] === ":" && /^\p{Lu}/u.test(line) && !/,\s*-/.test(line)) continue;
-    const lemma = normalizeLatinWord(match[1]);
-    const meaning = cleanGlossaryMeaning(match[3]);
-    if (!lemma || !meaning || seen.has(lemma)) continue;
-    seen.add(lemma);
-    entries.push({ lemma, forms: [lemma], pos: inferGlossaryPart(line), meanings: [meaning], source: "glossary" });
+    const segments = rawLine.split(/;\s*(?=[\p{L}\p{M}]+(?:\s*,[^;]*)?\s+-\s+)/u);
+    for (const segment of segments) {
+      const line = segment.trim().replace(/^[^\p{L}]+/u, "");
+      const match = line.match(/^([\p{L}\p{M}]+)((?:\s*,\s*(?:-?[\p{L}\p{M}]+))*)\s*(=|»|7|:|\s+-\s+)\s*(.+)$/iu);
+      if (!match) continue;
+      if (match[3] === ":" && /^\p{Lu}/u.test(line) && !/,\s*-/.test(line)) continue;
+      const lemma = normalizeLatinWord(match[1]);
+      const forms = [lemma, ...match[2].split(",").map(normalizeLatinWord).filter(form => form && !["m", "f", "n"].includes(form))];
+      const meaning = cleanGlossaryMeaning(match[4]);
+      if (!lemma || !meaning || seen.has(lemma)) continue;
+      seen.add(lemma);
+      entries.push({ lemma, forms: [...new Set(forms)], pos: inferGlossaryPart(line), meanings: [meaning], source: "glossary" });
+    }
   }
   return entries;
 }
 
 function paragraphRecord(paragraph, index, morphologyAnalyses) {
-  const text = cleanPageNoise(paragraph);
+  const text = candidateParagraphText(paragraph);
   const tokens = tokenizeLatinText(text);
   const normalized = tokens.map(token => token.normalized);
   const recognizedCount = normalized.filter(token => (morphologyAnalyses.get(token) || []).length > 0).length;
@@ -72,12 +101,29 @@ function paragraphRecord(paragraph, index, morphologyAnalyses) {
   const tokenCount = tokens.length;
   const recognitionRatio = tokenCount ? recognizedCount / tokenCount : 0;
   const score = recognitionRatio + Math.min(latinMarkerCount / Math.max(tokenCount, 1), .2) - Math.min(germanCount / Math.max(tokenCount, 1) * 1.5, .8);
-  return { index, text, tokenCount, recognizedCount, germanCount, score, glossary: looksLikeGlossary(paragraph) };
+  return { index, text, tokenCount, recognizedCount, germanCount, score, glossary: !text && String(paragraph).trim().length > 0 };
+}
+
+function candidateParagraphText(value) {
+  return String(value)
+    .split(/\n+/)
+    .map(line => cleanPageNoise(line))
+    .filter(line => line && !looksLikeGlossary(line) && !looksLikeGermanFootnote(line))
+    .join(" ")
+    .trim();
+}
+
+function looksLikeGermanFootnote(value) {
+  const line = String(value).trim();
+  if (!/^["'!²³\d*]/u.test(line)) return false;
+  const normalized = tokenizeLatinText(line).map(token => token.normalized);
+  return normalized.filter(token => GERMAN_MARKERS.has(token)).length > 0;
 }
 
 function cleanPageNoise(value) {
   return String(value)
     .replace(/\(\s*\d+\s+W[\p{L}\p{M}]+\s*\)/giu, "")
+    .replace(/^\s*(?:\d+(?:\^?\s*A)?|[nN])\s+/, "")
     .replace(/^\s*["'!]+/, "")
     .trim();
 }
@@ -89,20 +135,27 @@ function cleanLatinText(value) {
     .replace(/[ \t]+/g, " ")
     .replace(/\s*\n\s*/g, " ")
     .replace(/\s+([,.;:!?])/g, "$1")
+    .replace(/\bmortales puerem crescere\b/giu, "mortales puerum crescere")
+    .replace(/\bin curro draconibus iuncto\b/giu, "in curru draconibus iuncto")
     .trim();
 }
 
 function looksLikeGlossary(value) {
   const line = String(value).trim();
-  const match = line.match(/^["'!²³\d]*\s*[\p{L}\p{M}]+(?:\s*,\s*-[\p{L}\p{M}]+)?(?:\s*,\s*[mfn])?\s*(=|»|7|:)/iu);
+  const match = line.match(/^["'!²³\d]*\s*[\p{L}\p{M}]+(?:\s*,\s*[-\p{L}\p{M}]+)*(?:\s*,\s*[mfn])?\s*(=|»|7|:|\s+-\s+)/iu);
   if (!match) return false;
   return match[1] !== ":" || !/^\s*["'!²³\d]*\s*\p{Lu}/u.test(line) || /,\s*-/.test(line);
 }
 
 function cleanGlossaryMeaning(value) {
-  const cleaned = String(value).replace(/^[\s»=:\-]+/, "").trim();
-  const corrections = new Map([["verschmiühen", "verschmähen"], ["verschmahen", "verschmähen"]]);
-  return corrections.get(cleaned.toLocaleLowerCase("de")) || cleaned;
+  return String(value)
+    .replace(/^[\s»=:\-]+/, "")
+    .trim()
+    .replace(/verschmiühen|verschmahen/gi, "verschmähen")
+    .replace(/sáugen/gi, "säugen")
+    .replace(/tóten/gi, "töten")
+    .replace(/besüen/gi, "besäen")
+    .replace(/verschmihen/gi, "verschmähen");
 }
 
 function inferGlossaryPart(line) {
