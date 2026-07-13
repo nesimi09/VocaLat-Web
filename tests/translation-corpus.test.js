@@ -74,6 +74,18 @@ test("a real multi-paragraph Phaedrus worksheet reaches the verified translation
   assert.equal(result.translation, expected.map(entry => entry.german).join("\n"));
 });
 
+test("the real 53-word worksheet OCR reaches its complete verified translation", () => {
+  const raw = readFileSync(new URL("./fixtures/familia-avum-ocr.txt", import.meta.url), "utf8");
+  const expected = memory.filter(entry => entry.work === "Familia avum exspectat (Übersetzungsaufgabe)");
+  const morphology = new Map(expected.flatMap(entry => tokenizeLatinText(entry.latin)).map(token => [token.normalized, [{ forms: [token.normalized], morphology: {} }]]));
+  const document = extractLatinDocument(raw, morphology);
+  const result = analyzeBookText(document.latinText, [], [], null, document.glossary, morphology, memory);
+  assert.equal(tokenizeLatinText(document.latinText).length, 53);
+  assert.equal(result.translationVerified, true);
+  assert.equal(result.verifiedLines, 8);
+  assert.equal(result.translation, expected.map(entry => entry.german).join("\n"));
+});
+
 function removeOneLetter(text) {
   const token = tokenizeLatinText(text).map(item => item.raw).find(item => item.length >= 6);
   if (!token) return text;

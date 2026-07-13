@@ -72,7 +72,7 @@ export function tokenizeLatinText(text = "") {
 }
 
 const RESOLVED_STATUSES = new Set(["exact", "book-form", "fallback", "contextual", "proper", "corrected", "ambiguous"]);
-const SOURCE_PRIORITY = { glossary: 4, book: 3, fallback: 2, proper: 1 };
+const SOURCE_PRIORITY = { "proper-context": 5, glossary: 4, book: 3, fallback: 2, proper: 1 };
 
 export function analyzeBookText(text, vocabulary, grammarSections, maxLesson = null, fallbackEntries = [], morphologyAnalyses = new Map(), translationMemory = []) {
   const allowedVocabulary = vocabulary.filter(entry => maxLesson == null || Number(entry.lektion) <= Number(maxLesson));
@@ -82,10 +82,11 @@ export function analyzeBookText(text, vocabulary, grammarSections, maxLesson = n
     ...allowedVocabulary.map(bookDescriptor),
     ...fallbackEntries.map(fallbackDescriptor)
   ];
-  const baseIndex = buildVocabularyIndex(descriptors);
+  const contextualProperNames = morphologyProperNameDescriptors(sourceTokens, morphologyAnalyses);
+  const baseIndex = buildVocabularyIndex([...descriptors, ...contextualProperNames]);
   const unresolvedCapitalizedTokens = sourceTokens.filter(token => !baseIndex.words.has(token.normalized) && !baseIndex.forms.has(token.normalized));
   const properNames = properNameDescriptors(unresolvedCapitalizedTokens);
-  const index = properNames.length ? buildVocabularyIndex([...descriptors, ...properNames]) : baseIndex;
+  const index = properNames.length ? buildVocabularyIndex([...descriptors, ...contextualProperNames, ...properNames]) : baseIndex;
   const lineAnalyses = sourceLines.map(line => {
     const tokens = tokenizeLatinText(line);
     return { source: line, tokens, matches: analyzeTokens(tokens, index, morphologyAnalyses) };
@@ -238,7 +239,12 @@ function analyzeTokens(tokens, index, morphologyAnalyses) {
     const token = tokens[position];
     const headwordEntries = index.words.get(token.normalized) || [];
     const externalMorphology = morphologyAnalyses.get(token.normalized) || [];
-    const formRecords = mergeFormRecords(resolveFormRecords(token.normalized, index.forms), resolveMorphologyRecords(token.normalized, morphologyAnalyses, index));
+    const formRecords = preferContextualCase(
+      mergeFormRecords(resolveFormRecords(token.normalized, index.forms), resolveMorphologyRecords(token.normalized, morphologyAnalyses, index)),
+      tokens,
+      position,
+      morphologyAnalyses
+    );
     if (headwordEntries.length) {
       const directMorphologyRecords = formRecords.filter(record => record.directLemma);
       const directLemmas = new Set(directMorphologyRecords.map(record => normalizeLatinWord(record.entry.lemma)));
@@ -278,10 +284,47 @@ function resolveMorphologyRecords(token, analyses, index) {
   for (const analysis of analyses.get(token) || []) {
     const directEntries = index.words.get(analysis.forms[0]) || [];
     const generatedEntries = analysis.forms.flatMap(form => (index.forms.get(form) || []).map(record => record.entry));
-    const entries = directEntries.length ? directEntries : generatedEntries;
-    for (const entry of preferredEntries(entries)) records.push({ form: token, entry, morphology: analysis.morphology, directLemma: directEntries.includes(entry) });
+    const rawEntries = directEntries.length ? directEntries : generatedEntries;
+    const citationLemma = normalizeLatinWord(String(analysis.citation || "").match(/^([\p{L}\p{M}]+)/u)?.[1]);
+    const citationCompatible = rawEntries.filter(entry => entry.source !== "proper-context" || normalizeLatinWord(entry.lemma) === citationLemma);
+    const entries = rawEntries.some(entry => entry.source === "proper-context") ? citationCompatible : rawEntries;
+    const compatible = entries.filter(entry => partOfSpeechMatches(entry.pos, analysis.morphology?.part));
+    for (const entry of preferredEntries(compatible.length ? compatible : entries)) records.push({ form: token, entry, morphology: analysis.morphology, directLemma: directEntries.includes(entry) });
   }
   return records;
+}
+
+function partOfSpeechMatches(entryPart, analysisPart) {
+  if (!entryPart || entryPart === "x" || !analysisPart) return true;
+  if (analysisPart === "ppa") return entryPart === "v" || entryPart === "ppa";
+  return entryPart === analysisPart;
+}
+
+function preferContextualCase(records, tokens, position, analyses) {
+  if (records.length < 2) return records;
+  const previous = tokens[position - 1];
+  const next = tokens[position + 1];
+  const accusativePrepositions = new Set(["ad", "ante", "apud", "contra", "inter", "ob", "per", "post", "propter", "trans"]);
+  const ablativePrepositions = new Set(["ab", "cum", "de", "ex", "pro", "sine"]);
+  let preferredCase = ["salve", "salvete"].includes(previous?.normalized) ? "vocative"
+    : accusativePrepositions.has(previous?.normalized) ? "accusative"
+    : ablativePrepositions.has(previous?.normalized) ? "ablative"
+      : null;
+
+  if (!preferredCase && previous && next) {
+    const previousCanBeSubject = (analyses.get(previous.normalized) || []).some(analysis => morphologyHasCase(analysis.morphology, "nominative"));
+    const nextIsFiniteVerb = (analyses.get(next.normalized) || []).some(analysis => analysis.morphology?.part === "v" && analysis.morphology.mood === "indicative" && analysis.morphology.person);
+    const hasAccusativeReading = records.some(record => morphologyHasCase(record.morphology, "accusative"));
+    if (previousCanBeSubject && nextIsFiniteVerb && hasAccusativeReading) preferredCase = "accusative";
+  }
+
+  if (!preferredCase) return records;
+  const matching = records.filter(record => morphologyHasCase(record.morphology, preferredCase));
+  return matching.length ? matching : records;
+}
+
+function morphologyHasCase(morphology, grammaticalCase) {
+  return String(morphology?.case || "").split("/").includes(grammaticalCase);
 }
 
 function mergeFormRecords(...groups) {
@@ -339,6 +382,31 @@ function properNameDescriptors(tokens) {
       pos: "proper",
       source: "proper"
     });
+  }
+  return [...descriptors.values()];
+}
+
+function morphologyProperNameDescriptors(tokens, analyses) {
+  const descriptors = new Map();
+  for (const token of tokens) {
+    if (!/^\p{Lu}/u.test(token.raw)) continue;
+    for (const analysis of analyses.get(token.normalized) || []) {
+      const lemma = String(analysis.citation || "").match(/^([\p{L}\p{M}]+)/u)?.[1];
+      if (!lemma || !/^\p{Lu}/u.test(lemma)) continue;
+      const key = normalizeLatinWord(lemma);
+      if (!key || descriptors.has(key)) continue;
+      descriptors.set(key, {
+        lemma,
+        latein: lemma,
+        grammatik: "Eigenname",
+        deutsch: lemma,
+        lektion: null,
+        forms: [...new Set([lemma, ...analysis.forms, ...properNameForms(lemma)])],
+        meanings: [lemma],
+        pos: "proper",
+        source: "proper-context"
+      });
+    }
   }
   return [...descriptors.values()];
 }
@@ -452,7 +520,7 @@ function preferredEntries(entries) {
 function statusForSource(source, inflected) {
   if (source === "book") return inflected ? "book-form" : "exact";
   if (source === "glossary") return "contextual";
-  if (source === "proper") return "proper";
+  if (source === "proper" || source === "proper-context") return "proper";
   return "fallback";
 }
 

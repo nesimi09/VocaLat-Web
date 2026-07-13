@@ -1,6 +1,6 @@
 {
-  "version": 2,
-  "description": "Lokal geprüfte, selbst formulierte Übersetzungen gemeinfreier lateinischer Schultexte. Der Abgleich ist gegenüber kleinen OCR-Fehlern tolerant.",
+  "version": 3,
+  "description": "Lokal geprüfte, selbst formulierte Übersetzungen lateinischer Schul- und Quellentexte. Der Abgleich ist gegenüber kleinen OCR-Fehlern tolerant.",
   "entries": [
     {
       "latin": "Nessus centaurus rogatus est ab Deianira, ut se flumen Euhenum transferret: quam sublatam in flumine ipso violare voluit.",
@@ -479,6 +479,70 @@
       "sourceUrl": "https://www.latein-unterrichten.de/fileadmin/content/unterrichtseinheiten/phaedrus/fabeln/Fabel-I-1-Uebersetzung.pdf",
       "latin": "Atque ita correptum lacerat iniusta nece.",
       "german": "Und so packte der Wolf das Lamm und zerfleischte es in ungerechtem Mord."
+    },
+    {
+      "id": "school-familia-avum-1",
+      "author": "Unbekannt",
+      "work": "Familia avum exspectat (Übersetzungsaufgabe)",
+      "source": "Vom Nutzer bereitgestelltes Unterrichtsbild, 13.07.2026",
+      "latin": "Familia avum exspectat. Itaque domina servos vocat.",
+      "german": "Die Hausgemeinschaft erwartet den Großvater. Deshalb ruft die Hausherrin die Sklaven."
+    },
+    {
+      "id": "school-familia-avum-2",
+      "author": "Unbekannt",
+      "work": "Familia avum exspectat (Übersetzungsaufgabe)",
+      "source": "Vom Nutzer bereitgestelltes Unterrichtsbild, 13.07.2026",
+      "latin": "Nam viri atrium purgare debent.",
+      "german": "Denn die Männer müssen das Atrium reinigen."
+    },
+    {
+      "id": "school-familia-avum-3",
+      "author": "Unbekannt",
+      "work": "Familia avum exspectat (Übersetzungsaufgabe)",
+      "source": "Vom Nutzer bereitgestelltes Unterrichtsbild, 13.07.2026",
+      "latin": "Servae in culina sunt. Liberi non laborant, sed ludunt.",
+      "german": "Die Sklavinnen sind in der Küche. Die Kinder arbeiten nicht, sondern spielen."
+    },
+    {
+      "id": "school-familia-avum-4",
+      "author": "Unbekannt",
+      "work": "Familia avum exspectat (Übersetzungsaufgabe)",
+      "source": "Vom Nutzer bereitgestelltes Unterrichtsbild, 13.07.2026",
+      "latin": "Cornelia Aulum quaerit. Clamat: Aule!",
+      "german": "Cornelia sucht Aulus. Sie ruft: „Aulus!“"
+    },
+    {
+      "id": "school-familia-avum-5",
+      "author": "Unbekannt",
+      "work": "Familia avum exspectat (Übersetzungsaufgabe)",
+      "source": "Vom Nutzer bereitgestelltes Unterrichtsbild, 13.07.2026",
+      "latin": "Frater non respondet. Subito puella avum videt.",
+      "german": "Der Bruder antwortet nicht. Plötzlich sieht das Mädchen den Großvater."
+    },
+    {
+      "id": "school-familia-avum-6",
+      "author": "Unbekannt",
+      "work": "Familia avum exspectat (Übersetzungsaufgabe)",
+      "source": "Vom Nutzer bereitgestelltes Unterrichtsbild, 13.07.2026",
+      "latin": "Ad avum currit et ridet.",
+      "german": "Sie läuft zum Großvater und lacht."
+    },
+    {
+      "id": "school-familia-avum-7",
+      "author": "Unbekannt",
+      "work": "Familia avum exspectat (Übersetzungsaufgabe)",
+      "source": "Vom Nutzer bereitgestelltes Unterrichtsbild, 13.07.2026",
+      "latin": "Cornelia et avus gaudent. Nunc etiam Aulus venit.",
+      "german": "Cornelia und der Großvater freuen sich. Nun kommt auch Aulus."
+    },
+    {
+      "id": "school-familia-avum-8",
+      "author": "Unbekannt",
+      "work": "Familia avum exspectat (Übersetzungsaufgabe)",
+      "source": "Vom Nutzer bereitgestelltes Unterrichtsbild, 13.07.2026",
+      "latin": "Non iam tacet, sed clamat: Salve, ave!",
+      "german": "Er schweigt nicht mehr, sondern ruft: „Sei gegrüßt, Großvater!“"
     }
   ]
 }

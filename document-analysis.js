@@ -123,7 +123,8 @@ function looksLikeGermanFootnote(value) {
 function cleanPageNoise(value) {
   return String(value)
     .replace(/\(\s*\d+\s+W[\p{L}\p{M}]+\s*\)/giu, "")
-    .replace(/^\s*(?:\d+(?:\^?\s*A)?|[nN])\s+/, "")
+    .replace(/^\s*(?:\d+(?:\^?\s*A)?|[nNsS](?=\s+\p{Lu}))\s+/u, "")
+    .replace(/^\s*[:;|]+\s*(?=\p{Lu})/u, "")
     .replace(/^\s*["'!]+/, "")
     .trim();
 }
@@ -137,6 +138,7 @@ function cleanLatinText(value) {
     .replace(/\s+([,.;:!?])/g, "$1")
     .replace(/\bmortales puerem crescere\b/giu, "mortales puerum crescere")
     .replace(/\bin curro draconibus iuncto\b/giu, "in curru draconibus iuncto")
+    .replace(/\bavel\s*\*/giu, "ave")
     .trim();
 }
 
