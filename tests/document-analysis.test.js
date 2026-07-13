@@ -40,6 +40,9 @@ const triptolemusMorphology = new Map(tokenizeLatinText(triptolemusLatin).map(to
 const phaedrusOcr = readFileSync(new URL("./fixtures/phaedrus-wolf-lamm-ocr.txt", import.meta.url), "utf8");
 const phaedrusLatin = "Ad rivum eundem lupus et agnus venerant siti compulsi. Superior stabat lupus longeque inferior agnus. Tunc fauce improba latro incitatus iurgii causam intulit.,Cur\" inquit,turbulentam fecisti mihi aquam bibenti?\" Laniger contra timens:,Qui possum, quaeso, facere, quod quereris, lupe? A te decurrit ad meos haustüs liquor.\" Repulsus ille veritatis viribus:,Ante hos sex menses male\" ait, dixisti mihi.\" Respondit agnus:,Equidem natus non eram.\" Pater, hercle, tuus\" ille inquit, male dixit mihi.\" Atque ita correptum lacerat iniustà nece.";
 const phaedrusMorphology = new Map(tokenizeLatinText(phaedrusLatin).map(token => [token.normalized, [{ forms: [token.normalized], morphology: {} }]]));
+const familiaOcr = readFileSync(new URL("./fixtures/familia-avum-ocr.txt", import.meta.url), "utf8");
+const familiaLatin = "Familia avum exspectat. Itaque domina servos vocat. Nam viri atrium purgare debent. Servae in culina sunt. Liberi non laborant, sed ludunt. Cornelia Aulum quaerit. Clamat: \"Aule!\". Frater non respondet. Subito puella avum videt. Ad avum currit et ridet. Cornelia et avus gaudent. Nunc etiam Aulus venit. Non iam tacet, sed clamat: Salve, ave.";
+const familiaMorphology = new Map(tokenizeLatinText(familiaLatin).map(token => [token.normalized, [{ forms: [token.normalized], morphology: {} }]]));
 
 test("a mixed German-Latin page keeps only the Latin passage", () => {
   const result = extractLatinDocument(nessusOcr, morphology);
@@ -89,4 +92,12 @@ test("widely spaced Latin paragraphs are kept as one document while line numbers
   assert.equal(result.latinText, phaedrusLatin);
   assert.equal(tokenizeLatinText(result.latinText).length, 79);
   assert.doesNotMatch(result.latinText, /ÜBERSETZUNG|Jesper|\b18\b|\bn Respondit\b|5\^/);
+});
+
+test("OCR line-number letters and punctuation artifacts are removed from the 53-word worksheet", () => {
+  const result = extractLatinDocument(familiaOcr, familiaMorphology);
+  assert.equal(result.detected, true);
+  assert.equal(result.latinText, familiaLatin);
+  assert.equal(tokenizeLatinText(result.latinText).length, 53);
+  assert.doesNotMatch(result.latinText, /Übersetzungsaufgabe|Hilfen|versteckten|\bs Cornelia\b|avel/);
 });

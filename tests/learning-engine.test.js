@@ -158,6 +158,47 @@ test("morphological lemmas beat unrelated homographs and generated book forms", 
   assert.equal(result.matches[1].entries[0].lemma, "morior");
 });
 
+test("sentence case and dictionary proper-name context disambiguate avum, Aulum and servos", () => {
+  const book = [{ lektion: 14, latein: "avis", grammatik: "avis f.; Gen. Pl. avium", deutsch: "der Vogel" }];
+  const fallback = [
+    { lemma: "avus", forms: ["avus", "avi"], pos: "n", meanings: ["Großvater"] },
+    { lemma: "ave", forms: ["ave"], pos: "int", meanings: ["sei gegrüßt"] },
+    { lemma: "salve", forms: ["salve"], pos: "int", meanings: ["sei gegrüßt"] },
+    { lemma: "aula", forms: ["aula", "aulae"], pos: "n", meanings: ["Palast"] },
+    { lemma: "servus", forms: ["servus", "serva", "servum"], pos: "adj", meanings: ["dienend"] },
+    { lemma: "servus", forms: ["servus", "servi"], pos: "n", meanings: ["Sklave"] }
+  ];
+  const morphology = new Map([
+    ["familia", [{ citation: "familia, familiae N", forms: ["familia"], morphology: { part: "n", case: "nominative", number: "singular" } }]],
+    ["avum", [
+      { citation: "avus, avi N", forms: ["avus", "avi"], morphology: { part: "n", case: "accusative", number: "singular" } },
+      { citation: "avis, avis N", forms: ["avis"], morphology: { part: "n", case: "genitive", number: "plural" } }
+    ]],
+    ["exspectat", [{ citation: "exspecto V", forms: ["exspecto", "exspectare"], morphology: { part: "v", mood: "indicative", person: 3, number: "singular" } }]],
+    ["cornelia", [{ citation: "Cornelia, Corneliae N", forms: ["cornelia"], morphology: { part: "n", case: "nominative", number: "singular" } }]],
+    ["aulum", [
+      { citation: "aula, aulae N", forms: ["aula", "aulae"], morphology: { part: "n", case: "genitive", number: "plural" } },
+      { citation: "Aulus, Auli N", forms: ["aulus", "auli"], morphology: { part: "n", case: "accusative", number: "singular" } }
+    ]],
+    ["quaerit", [{ citation: "quaero V", forms: ["quaero", "quaerere"], morphology: { part: "v", mood: "indicative", person: 3, number: "singular" } }]],
+    ["domina", [{ citation: "domina, dominae N", forms: ["domina"], morphology: { part: "n", case: "nominative", number: "singular" } }]],
+    ["servos", [{ citation: "servus, servi N", forms: ["servus", "servi"], morphology: { part: "n", case: "accusative", number: "plural" } }]],
+    ["vocat", [{ citation: "voco V", forms: ["voco", "vocare"], morphology: { part: "v", mood: "indicative", person: 3, number: "singular" } }]],
+    ["ave", [
+      { citation: "avus, avi N", forms: ["avus", "avi"], morphology: { part: "n", case: "vocative", number: "singular" } },
+      { citation: "avis, avis N", forms: ["avis"], morphology: { part: "n", case: "ablative", number: "singular" } },
+      { citation: "ave INTERJ", forms: ["ave"], morphology: { part: "int" } }
+    ]]
+  ]);
+  const result = analyzeBookText("Familia avum exspectat. Cornelia Aulum quaerit. Domina servos vocat. Salve, ave.", book, [], null, fallback, morphology);
+  assert.equal(result.matches.find(match => match.normalized === "avum").entries[0].lemma, "avus");
+  assert.equal(result.matches.find(match => match.normalized === "aulum").entries[0].lemma, "Aulus");
+  assert.equal(result.matches.find(match => match.normalized === "aulum").status, "proper");
+  assert.equal(result.matches.find(match => match.normalized === "aulum").morphology.some(item => item.case === "genitive"), false);
+  assert.equal(result.matches.find(match => match.normalized === "servos").entries[0].deutsch, "Sklave");
+  assert.equal(result.matches.find(match => match.normalized === "ave").entries[0].lemma, "avus");
+});
+
 test("page glossary and proper names resolve before generic fallbacks", () => {
   const fallback = [
     { lemma: "philtrum", forms: ["philtrum"], pos: "n", meanings: ["Filter"] },
