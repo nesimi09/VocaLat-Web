@@ -100,15 +100,21 @@ export function analyzeBookText(text, vocabulary, grammarSections, maxLesson = n
     addGrammarRule(grammar, grammarSections, "Präsens Aktiv", "Eine finite Verbform im Präsens Aktiv wurde über Person und Numerus bestimmt.", false);
   }
 
-  const translatedLines = lineAnalyses.map(line => {
-    const verified = findTranslationMemoryMatch(line.source, translationMemory);
-    return { text: verified?.german || translateLatinLine(line.matches), verified: Boolean(verified) };
-  });
+  const passageMatches = findTranslationMemoryPassage(text, translationMemory);
+  const translatedLines = passageMatches?.length
+    ? passageMatches.map(match => ({ text: match.german, verified: true, reliable: true }))
+    : lineAnalyses.map(line => {
+      const verified = findTranslationMemoryMatch(line.source, translationMemory);
+      const reliable = Boolean(verified) || isReliableHeuristicLine(line.matches);
+      return { text: verified?.german || translateLatinLine(line.matches), verified: Boolean(verified), reliable };
+    });
+  const translationReliable = translatedLines.length > 0 && translatedLines.every(line => line.reliable);
 
   return {
     text: String(text).trim(),
     correctedText: lineAnalyses.map(line => line.matches.map(match => match.canonicalForm || match.token).join(" ")).join("\n"),
-    translation: translatedLines.map(line => line.text).join("\n"),
+    translation: translationReliable ? translatedLines.map(line => line.text).join("\n") : "",
+    translationReliable,
     verifiedLines: translatedLines.filter(line => line.verified).length,
     translationVerified: translatedLines.length > 0 && translatedLines.every(line => line.verified),
     maxLesson,
@@ -122,32 +128,86 @@ export function analyzeBookText(text, vocabulary, grammarSections, maxLesson = n
   };
 }
 
+function isReliableHeuristicLine(matches) {
+  if (!matches.length || matches.some(match => !RESOLVED_STATUSES.has(match.status) || !match.entries.length)) return false;
+  const ppaIndex = matches.findIndex(match => hasMorphology(match, morphology => morphology.part === "ppa" && morphology.case?.includes("ablative") && morphology.number === "plural"));
+  const ablativeSubject = matches.findIndex((match, index) => index !== ppaIndex && hasMorphology(match, morphology => morphology.part === "n" && morphology.case?.includes("ablative") && morphology.number === "plural"));
+  if (ppaIndex >= 0 && ablativeSubject >= 0) return matches.length <= 8;
+
+  const clauseMarkers = new Set(["cum", "dum", "ne", "nisi", "postquam", "quam", "quod", "qui", "quia", "si", "ut"]);
+  if (matches.some(match => clauseMarkers.has(match.normalized))) return false;
+  const finiteVerbs = matches.filter(match => hasMorphology(match, morphology => morphology.part === "v" && morphology.mood === "indicative" && morphology.person));
+  const nominativeSubjects = matches.filter(match => hasMorphology(match, morphology => morphology.part === "n" && morphology.case?.includes("nominative")));
+  return matches.length <= 6 && finiteVerbs.length === 1 && nominativeSubjects.length === 1;
+}
+
 function findTranslationMemoryMatch(source, entries) {
   const sourceTokens = tokenizeLatinText(source).map(token => token.normalized);
   if (sourceTokens.length < 4) return null;
   let best = null;
   for (const entry of entries || []) {
     const candidateTokens = tokenizeLatinText(entry.latin).map(token => token.normalized);
-    const denominator = Math.max(sourceTokens.length, candidateTokens.length, 1);
-    const similarity = 1 - tokenSequenceDistance(sourceTokens, candidateTokens) / denominator;
+    if (sourceTokens.length !== candidateTokens.length || hasCriticalTokenMismatch(sourceTokens, candidateTokens)) continue;
+    const similarity = ocrCompatibleTokenSimilarity(sourceTokens, candidateTokens);
+    if (similarity == null) continue;
     if (similarity >= .88 && (!best || similarity > best.similarity)) best = { ...entry, similarity };
   }
   return best;
 }
 
-function tokenSequenceDistance(left, right) {
-  const previous = Array.from({ length: right.length + 1 }, (_, index) => index);
-  for (let row = 1; row <= left.length; row += 1) {
-    const current = [row];
-    for (let column = 1; column <= right.length; column += 1) {
-      const wordDistance = left[row - 1] === right[column - 1] ? 0
-        : Math.min(left[row - 1].length, right[column - 1].length) >= 5 && levenshtein(left[row - 1], right[column - 1]) === 1 ? .25
-          : 1;
-      current[column] = Math.min(current[column - 1] + 1, previous[column] + 1, previous[column - 1] + wordDistance);
+function findTranslationMemoryPassage(source, entries) {
+  const sourceTokens = tokenizeLatinText(source).map(token => token.normalized);
+  if (sourceTokens.length < 4) return null;
+  const candidates = (entries || [])
+    .map(entry => ({ entry, tokens: tokenizeLatinText(entry.latin).map(token => token.normalized) }))
+    .filter(candidate => candidate.tokens.length >= 4);
+  const states = Array(sourceTokens.length + 1).fill(null);
+  states[0] = { score: 0, weight: 0, matches: [] };
+
+  for (let start = 0; start < sourceTokens.length; start += 1) {
+    const state = states[start];
+    if (!state) continue;
+    for (const candidate of candidates) {
+      const observedLength = candidate.tokens.length;
+      if (start + observedLength > sourceTokens.length) continue;
+      const observed = sourceTokens.slice(start, start + observedLength);
+      if (hasCriticalTokenMismatch(observed, candidate.tokens)) continue;
+      const similarity = ocrCompatibleTokenSimilarity(observed, candidate.tokens);
+      if (similarity == null) continue;
+      const threshold = candidate.tokens.length <= 6 ? .92 : .88;
+      if (similarity < threshold) continue;
+      const end = start + observedLength;
+      const next = {
+        score: state.score + similarity * candidate.tokens.length,
+        weight: state.weight + candidate.tokens.length,
+        matches: [...state.matches, candidate.entry]
+      };
+      const previous = states[end];
+      if (!previous || next.score / next.weight > previous.score / previous.weight) states[end] = next;
     }
-    previous.splice(0, previous.length, ...current);
   }
-  return previous[right.length];
+
+  const complete = states[sourceTokens.length];
+  return complete && complete.score / complete.weight >= .9 ? complete.matches : null;
+}
+
+function hasCriticalTokenMismatch(observed, candidate) {
+  const critical = new Set(["haud", "ne", "nec", "neque", "nihil", "nisi", "non", "num", "sine"]);
+  for (const token of critical) {
+    if (observed.filter(word => word === token).length !== candidate.filter(word => word === token).length) return true;
+  }
+  return false;
+}
+
+function ocrCompatibleTokenSimilarity(observed, candidate) {
+  if (observed.length !== candidate.length) return null;
+  let cost = 0;
+  for (let index = 0; index < observed.length; index += 1) {
+    if (observed[index] === candidate[index]) continue;
+    if (Math.min(observed[index].length, candidate[index].length) < 4 || levenshtein(observed[index], candidate[index]) !== 1) return null;
+    cost += .25;
+  }
+  return 1 - cost / Math.max(observed.length, 1);
 }
 
 function splitLatinUnits(text) {
@@ -414,7 +474,7 @@ function distinctEntries(entries) {
 function resolveFormRecords(token, forms) {
   const direct = forms.get(token) || [];
   if (direct.length) return direct;
-  if (token.endsWith("que") && token.length > 5) {
+  if (token.endsWith("que") && token.length > 4) {
     return (forms.get(token.slice(0, -3)) || []).map(record => ({ ...record, morphology: { ...(record.morphology || {}), enclitic: "que" } }));
   }
   return [];

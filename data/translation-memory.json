@@ -1,6 +1,6 @@
 {
-  "version": 1,
-  "description": "Lokal geprüfte Übersetzungen für komplexe Schultexte. Der Abgleich ist gegenüber kleinen OCR-Fehlern tolerant.",
+  "version": 2,
+  "description": "Lokal geprüfte, selbst formulierte Übersetzungen gemeinfreier lateinischer Schultexte. Der Abgleich ist gegenüber kleinen OCR-Fehlern tolerant.",
   "entries": [
     {
       "latin": "Nessus centaurus rogatus est ab Deianira, ut se flumen Euhenum transferret: quam sublatam in flumine ipso violare voluit.",
@@ -21,6 +21,464 @@
     {
       "latin": "Id Deianira credens conditum diligenter servavit.",
       "german": "Deianira glaubte dies und bewahrte es, nachdem sie es versteckt hatte, sorgfältig auf."
+    },
+    {
+      "id": "caesar-bg-1-1-1",
+      "author": "Caesar",
+      "work": "De bello Gallico 1,1",
+      "sourceUrl": "https://latein.cc/uebersetzungen/de-bello-gallico-1/kapitel-1/",
+      "latin": "Gallia est omnis divisa in partes tres, quarum unam incolunt Belgae, aliam Aquitani, tertiam qui ipsorum lingua Celtae, nostra Galli appellantur.",
+      "german": "Ganz Gallien ist in drei Teile geteilt. Einen davon bewohnen die Belger, einen anderen die Aquitanier und den dritten diejenigen, die in ihrer eigenen Sprache Kelten, in unserer aber Gallier genannt werden."
+    },
+    {
+      "id": "caesar-bg-1-1-2",
+      "author": "Caesar",
+      "work": "De bello Gallico 1,1",
+      "sourceUrl": "https://latein.cc/uebersetzungen/de-bello-gallico-1/kapitel-1/",
+      "latin": "Hi omnes lingua, institutis, legibus inter se differunt.",
+      "german": "Diese alle unterscheiden sich untereinander in Sprache, Lebensweise und Gesetzen."
+    },
+    {
+      "id": "caesar-bg-1-1-3",
+      "author": "Caesar",
+      "work": "De bello Gallico 1,1",
+      "sourceUrl": "https://latein.cc/uebersetzungen/de-bello-gallico-1/kapitel-1/",
+      "latin": "Gallos ab Aquitanis Garumna flumen, a Belgis Matrona et Sequana dividit.",
+      "german": "Die Gallier trennt von den Aquitaniern der Fluss Garonne, von den Belgern trennen sie die Marne und die Seine."
+    },
+    {
+      "id": "caesar-bg-1-1-4",
+      "author": "Caesar",
+      "work": "De bello Gallico 1,1",
+      "sourceUrl": "https://latein.cc/uebersetzungen/de-bello-gallico-1/kapitel-1/",
+      "latin": "Horum omnium fortissimi sunt Belgae, propterea quod a cultu atque humanitate provinciae longissime absunt, minimeque ad eos mercatores saepe commeant atque ea quae ad effeminandos animos pertinent important, proximique sunt Germanis, qui trans Rhenum incolunt, quibuscum continenter bellum gerunt.",
+      "german": "Von allen diesen sind die Belger die tapfersten, weil sie von der verfeinerten Lebensweise der Provinz am weitesten entfernt sind, nur sehr selten Händler zu ihnen kommen und Dinge einführen, die zur Verweichlichung der Gemüter beitragen, und weil sie den Germanen am nächsten wohnen, die jenseits des Rheins leben und mit denen sie ununterbrochen Krieg führen."
+    },
+    {
+      "id": "caesar-bg-1-1-5",
+      "author": "Caesar",
+      "work": "De bello Gallico 1,1",
+      "sourceUrl": "https://latein.cc/uebersetzungen/de-bello-gallico-1/kapitel-1/",
+      "latin": "Qua de causa Helvetii quoque reliquos Gallos virtute praecedunt, quod fere cotidianis proeliis cum Germanis contendunt, cum aut suis finibus eos prohibent aut ipsi in eorum finibus bellum gerunt.",
+      "german": "Aus diesem Grund übertreffen auch die Helvetier die übrigen Gallier an Tapferkeit, weil sie beinahe täglich mit den Germanen kämpfen, indem sie diese entweder von ihrem eigenen Gebiet fernhalten oder selbst in deren Gebiet Krieg führen."
+    },
+    {
+      "id": "caesar-bg-1-1-6",
+      "author": "Caesar",
+      "work": "De bello Gallico 1,1",
+      "sourceUrl": "https://latein.cc/uebersetzungen/de-bello-gallico-1/kapitel-1/",
+      "latin": "Eorum una pars, quam Gallos obtinere dictum est, initium capit a flumine Rhodano, continetur Garumna flumine, Oceano, finibus Belgarum, attingit etiam ab Sequanis et Helvetiis flumen Rhenum, vergit ad septentriones.",
+      "german": "Der eine Teil, den nach der Überlieferung die Gallier bewohnen, beginnt am Fluss Rhone, wird von der Garonne, dem Ozean und dem Gebiet der Belger begrenzt, reicht bei den Sequanern und Helvetiern bis an den Rhein und erstreckt sich nach Norden."
+    },
+    {
+      "id": "caesar-bg-1-1-7",
+      "author": "Caesar",
+      "work": "De bello Gallico 1,1",
+      "sourceUrl": "https://latein.cc/uebersetzungen/de-bello-gallico-1/kapitel-1/",
+      "latin": "Belgae ab extremis Galliae finibus oriuntur, pertinent ad inferiorem partem fluminis Rheni, spectant in septentrionem et orientem solem.",
+      "german": "Die Belger stammen aus den äußersten Gebieten Galliens, reichen bis an den Unterlauf des Rheins und liegen nach Norden und Osten hin."
+    },
+    {
+      "id": "caesar-bg-1-1-8",
+      "author": "Caesar",
+      "work": "De bello Gallico 1,1",
+      "sourceUrl": "https://latein.cc/uebersetzungen/de-bello-gallico-1/kapitel-1/",
+      "latin": "Aquitania a Garumna flumine ad Pyrenaeos montes et eam partem Oceani quae est ad Hispaniam pertinet; spectat inter occasum solis et septentriones.",
+      "german": "Aquitanien erstreckt sich von der Garonne bis zu den Pyrenäen und zu dem Teil des Ozeans, der bei Spanien liegt; es liegt zwischen Westen und Norden."
+    },
+    {
+      "id": "cicero-cat-1-1-1",
+      "author": "Cicero",
+      "work": "In Catilinam 1,1",
+      "sourceUrl": "https://www.lateinheft.de/cicero/cicero-in-catilinam-1-kapitel-1-ubersetzung/",
+      "latin": "Quo usque tandem abutere, Catilina, patientia nostra?",
+      "german": "Wie lange noch, Catilina, willst du unsere Geduld missbrauchen?"
+    },
+    {
+      "id": "cicero-cat-1-1-2",
+      "author": "Cicero",
+      "work": "In Catilinam 1,1",
+      "sourceUrl": "https://www.lateinheft.de/cicero/cicero-in-catilinam-1-kapitel-1-ubersetzung/",
+      "latin": "Quam diu etiam furor iste tuus nos eludet?",
+      "german": "Wie lange wird uns dein Wahnsinn noch verhöhnen?"
+    },
+    {
+      "id": "cicero-cat-1-1-3",
+      "author": "Cicero",
+      "work": "In Catilinam 1,1",
+      "sourceUrl": "https://www.lateinheft.de/cicero/cicero-in-catilinam-1-kapitel-1-ubersetzung/",
+      "latin": "Quem ad finem sese effrenata iactabit audacia?",
+      "german": "Bis zu welchem Punkt wird sich deine zügellose Frechheit noch vorwagen?"
+    },
+    {
+      "id": "cicero-cat-1-1-4",
+      "author": "Cicero",
+      "work": "In Catilinam 1,1",
+      "sourceUrl": "https://www.lateinheft.de/cicero/cicero-in-catilinam-1-kapitel-1-ubersetzung/",
+      "latin": "Nihilne te nocturnum praesidium Palati, nihil urbis vigiliae, nihil timor populi, nihil concursus bonorum omnium, nihil hic munitissimus habendi senatus locus, nihil horum ora voltusque moverunt?",
+      "german": "Haben dich die nächtliche Bewachung des Palatin, die Wachen der Stadt, die Angst des Volkes, das Zusammentreffen aller rechtschaffenen Männer, dieser besonders gesicherte Ort der Senatssitzung und die Gesichter und Mienen dieser Anwesenden überhaupt nicht beeindruckt?"
+    },
+    {
+      "id": "cicero-cat-1-1-5",
+      "author": "Cicero",
+      "work": "In Catilinam 1,1",
+      "sourceUrl": "https://www.lateinheft.de/cicero/cicero-in-catilinam-1-kapitel-1-ubersetzung/",
+      "latin": "Patere tua consilia non sentis, constrictam iam horum omnium scientia teneri coniurationem tuam non vides?",
+      "german": "Merkst du nicht, dass deine Pläne offenliegen, und siehst du nicht, dass deine Verschwörung durch die Kenntnis all dieser Männer bereits fest im Griff gehalten wird?"
+    },
+    {
+      "id": "cicero-cat-1-1-6",
+      "author": "Cicero",
+      "work": "In Catilinam 1,1",
+      "sourceUrl": "https://www.lateinheft.de/cicero/cicero-in-catilinam-1-kapitel-1-ubersetzung/",
+      "latin": "Quid proxima, quid superiore nocte egeris, ubi fueris, quos convocaveris, quid consilii ceperis, quem nostrum ignorare arbitraris?",
+      "german": "Wen von uns hältst du für so unwissend, dass er nicht weiß, was du in der letzten und in der vorletzten Nacht getan hast, wo du gewesen bist, wen du zusammengerufen und welchen Plan du gefasst hast?"
+    },
+    {
+      "id": "phaedrus-1-12-1",
+      "author": "Phaedrus",
+      "work": "Fabulae 1,12",
+      "sourceUrl": "https://www.lateinheft.de/phaedrus/phaedrus-fabulae-112-cervus-ad-fontem-ubersetzung/",
+      "latin": "Ad fontem cervus, cum bibisset, restitit, et in liquore vidit effigiem suam.",
+      "german": "Ein Hirsch blieb an einer Quelle stehen, nachdem er getrunken hatte, und sah im Wasser sein Spiegelbild."
+    },
+    {
+      "id": "phaedrus-1-12-2",
+      "author": "Phaedrus",
+      "work": "Fabulae 1,12",
+      "sourceUrl": "https://www.lateinheft.de/phaedrus/phaedrus-fabulae-112-cervus-ad-fontem-ubersetzung/",
+      "latin": "Tum moriens edidisse vocem hanc dicitur: O me infelicem, qui nunc demum intellego, utilia mihi quam fuerint quae despexeram, et, quae laudaram, quantum luctus habuerint.",
+      "german": "Als er starb, soll er ausgerufen haben: Ich Unglücklicher erkenne erst jetzt, wie nützlich das war, was ich verachtet hatte, und wie viel Leid mir das gebracht hat, was ich gelobt hatte."
+    },
+    {
+      "id": "nepos-hannibal-1-1",
+      "author": "Cornelius Nepos",
+      "work": "Hannibal 1",
+      "sourceUrl": "https://www.lateinlex.de/?call=Puc&permalink=Nep_Hann_1",
+      "latin": "Hannibal, Hamilcaris filius, Karthaginiensis.",
+      "german": "Hannibal, der Sohn Hamilkars, war Karthager."
+    },
+    {
+      "id": "nepos-hannibal-1-2",
+      "author": "Cornelius Nepos",
+      "work": "Hannibal 1",
+      "sourceUrl": "https://www.lateinlex.de/?call=Puc&permalink=Nep_Hann_1",
+      "latin": "Si verum est, quod nemo dubitat, ut populus Romanus omnes gentes virtute superarit, non est infitiandum Hannibalem tanto praestitisse ceteros imperatores prudentia, quanto populus Romanus antecedat fortitudine cunctas nationes.",
+      "german": "Wenn es wahr ist, woran niemand zweifelt, dass das römische Volk alle Völker an Tapferkeit übertroffen hat, dann muss man zugeben, dass Hannibal die übrigen Feldherren an Klugheit ebenso weit übertraf, wie das römische Volk alle Nationen an Mut überragt."
+    },
+    {
+      "id": "nepos-hannibal-1-3",
+      "author": "Cornelius Nepos",
+      "work": "Hannibal 1",
+      "sourceUrl": "https://www.lateinlex.de/?call=Puc&permalink=Nep_Hann_1",
+      "latin": "Nam quotienscumque cum eo congressus est in Italia, semper discessit superior.",
+      "german": "Denn sooft Hannibal in Italien mit dem römischen Volk zusammenstieß, ging er stets als Sieger hervor."
+    },
+    {
+      "id": "nepos-hannibal-1-4",
+      "author": "Cornelius Nepos",
+      "work": "Hannibal 1",
+      "sourceUrl": "https://www.lateinlex.de/?call=Puc&permalink=Nep_Hann_1",
+      "latin": "Quod nisi domi civium suorum invidia debilitatus esset, Romanos videtur superare potuisse.",
+      "german": "Wäre er nicht in seiner Heimat durch den Neid seiner Mitbürger geschwächt worden, hätte er die Römer offenbar besiegen können."
+    },
+    {
+      "id": "nepos-hannibal-1-5",
+      "author": "Cornelius Nepos",
+      "work": "Hannibal 1",
+      "sourceUrl": "https://www.lateinlex.de/?call=Puc&permalink=Nep_Hann_1",
+      "latin": "Sed multorum obtrectatio devicit unius virtutem.",
+      "german": "Doch die Missgunst vieler besiegte die Tüchtigkeit eines Einzelnen."
+    },
+    {
+      "id": "nepos-hannibal-1-6",
+      "author": "Cornelius Nepos",
+      "work": "Hannibal 1",
+      "sourceUrl": "https://www.lateinlex.de/?call=Puc&permalink=Nep_Hann_1",
+      "latin": "Hic autem velut hereditate relictum odium paternum erga Romanos sic conservavit, ut prius animam quam id deposuerit, qui quidem, cum patria pulsus esset et alienarum opum indigeret, numquam destiterit animo bellare cum Romanis.",
+      "german": "Er bewahrte den gleichsam als Erbe hinterlassenen Hass seines Vaters gegen die Römer so sehr, dass er eher sein Leben als diesen Hass aufgab; selbst aus der Heimat vertrieben und auf fremde Hilfe angewiesen, hörte er niemals auf, im Geist gegen die Römer Krieg zu führen."
+    },
+    {
+      "id": "seneca-ep-1-1",
+      "author": "Seneca",
+      "work": "Epistulae morales 1",
+      "sourceUrl": "https://www.lateinlex.de/?call=Puc&permalink=Sen_epist_1_1",
+      "latin": "Ita fac, mi Lucili: vindica te tibi, et tempus quod adhuc aut auferebatur aut subripiebatur aut excidebat collige et serva.",
+      "german": "Handle so, mein Lucilius: Befreie dich für dich selbst und sammle und bewahre die Zeit, die dir bisher entrissen oder heimlich genommen wurde oder einfach entglitt."
+    },
+    {
+      "id": "seneca-ep-1-2",
+      "author": "Seneca",
+      "work": "Epistulae morales 1",
+      "sourceUrl": "https://www.lateinlex.de/?call=Puc&permalink=Sen_epist_1_1",
+      "latin": "Persuade tibi hoc sic esse ut scribo: quaedam tempora eripiuntur nobis, quaedam subducuntur, quaedam effluunt.",
+      "german": "Überzeuge dich davon, dass es so ist, wie ich schreibe: Manche Zeit wird uns entrissen, manche heimlich entzogen und manche fließt einfach davon."
+    },
+    {
+      "id": "seneca-ep-1-3",
+      "author": "Seneca",
+      "work": "Epistulae morales 1",
+      "sourceUrl": "https://www.lateinlex.de/?call=Puc&permalink=Sen_epist_1_1",
+      "latin": "Turpissima tamen est iactura quae per neglegentiam fit.",
+      "german": "Am beschämendsten ist jedoch der Verlust, der durch Nachlässigkeit entsteht."
+    },
+    {
+      "id": "seneca-ep-1-4",
+      "author": "Seneca",
+      "work": "Epistulae morales 1",
+      "sourceUrl": "https://www.lateinlex.de/?call=Puc&permalink=Sen_epist_1_1",
+      "latin": "Et si volueris attendere, magna pars vitae elabitur male agentibus, maxima nihil agentibus, tota vita aliud agentibus.",
+      "german": "Wenn du genau hinsiehst, wirst du erkennen: Ein großer Teil des Lebens entgleitet uns, während wir schlecht handeln, der größte, während wir nichts tun, und das ganze Leben, während wir etwas anderes tun."
+    },
+    {
+      "id": "seneca-ep-1-5",
+      "author": "Seneca",
+      "work": "Epistulae morales 1",
+      "sourceUrl": "https://www.lateinlex.de/?call=Puc&permalink=Sen_epist_1_1",
+      "latin": "Quem mihi dabis qui aliquod pretium tempori ponat, qui diem aestimet, qui intellegat se cotidie mori?",
+      "german": "Wen kannst du mir nennen, der der Zeit einen Wert beimisst, der einen Tag zu schätzen weiß und der erkennt, dass er täglich stirbt?"
+    },
+    {
+      "id": "sallust-cat-5-1",
+      "author": "Sallust",
+      "work": "De coniuratione Catilinae 5",
+      "sourceUrl": "https://www.gottwein.de/Lat/sall/cat05.php",
+      "latin": "Lucius Catilina, nobili genere natus, fuit magna vi et animi et corporis, sed ingenio malo pravoque.",
+      "german": "Lucius Catilina stammte aus vornehmem Geschlecht und besaß große geistige und körperliche Kraft, hatte aber einen schlechten und verdorbenen Charakter."
+    },
+    {
+      "id": "sallust-cat-5-2",
+      "author": "Sallust",
+      "work": "De coniuratione Catilinae 5",
+      "sourceUrl": "https://www.gottwein.de/Lat/sall/cat05.php",
+      "latin": "Huic ab adulescentia bella intestina, caedes, rapinae, discordia civilis grata fuere, ibique iuventutem suam exercuit.",
+      "german": "Seit seiner Jugend gefielen ihm Bürgerkriege, Mordtaten, Raubzüge und innerer Zwist; darin übte er seine Jugendkraft."
+    },
+    {
+      "id": "sallust-cat-5-3",
+      "author": "Sallust",
+      "work": "De coniuratione Catilinae 5",
+      "sourceUrl": "https://www.gottwein.de/Lat/sall/cat05.php",
+      "latin": "Corpus patiens inediae, algoris, vigiliae supra quam cuiquam credibile est.",
+      "german": "Sein Körper ertrug Hunger, Kälte und Schlaflosigkeit in einem für jeden kaum glaublichen Maß."
+    },
+    {
+      "id": "sallust-cat-5-4",
+      "author": "Sallust",
+      "work": "De coniuratione Catilinae 5",
+      "sourceUrl": "https://www.gottwein.de/Lat/sall/cat05.php",
+      "latin": "Animus audax, subdolus, varius, cuius rei lubet simulator ac dissimulator; alieni adpetens, sui profusus, ardens in cupiditatibus; satis eloquentiae, sapientiae parum.",
+      "german": "Sein Geist war kühn, hinterlistig und wandelbar, ein Meister darin, alles Beliebige vorzutäuschen oder zu verbergen; er verlangte nach fremdem Besitz, verschwendete den eigenen und brannte vor Begierden; Beredsamkeit besaß er genug, Weisheit nur wenig."
+    },
+    {
+      "id": "sallust-cat-5-5",
+      "author": "Sallust",
+      "work": "De coniuratione Catilinae 5",
+      "sourceUrl": "https://www.gottwein.de/Lat/sall/cat05.php",
+      "latin": "Vastus animus inmoderata, incredibilia, nimis alta semper cupiebat.",
+      "german": "Sein maßloser Geist begehrte stets Unmäßiges, Unglaubliches und allzu Hochgestecktes."
+    },
+    {
+      "id": "ovid-met-1-1",
+      "author": "Ovid",
+      "work": "Metamorphosen 1,1–4",
+      "sourceUrl": "https://www.thelatinlibrary.com/ovid/ovid.met1.shtml",
+      "latin": "In nova fert animus mutatas dicere formas corpora; di, coeptis, nam vos mutastis et illas, adspirate meis primaque ab origine mundi ad mea perpetuum deducite tempora carmen.",
+      "german": "Mein Geist treibt mich dazu, von Gestalten zu erzählen, die sich in neue Körper verwandelt haben. Ihr Götter, begleitet mein Vorhaben, denn auch diese Verwandlungen habt ihr bewirkt, und führt mein fortlaufendes Lied vom ersten Ursprung der Welt bis in meine Zeit."
+    },
+    {
+      "id": "ovid-met-1-2",
+      "author": "Ovid",
+      "work": "Metamorphosen 1,5–9",
+      "sourceUrl": "https://www.thelatinlibrary.com/ovid/ovid.met1.shtml",
+      "latin": "Ante mare et terras et quod tegit omnia caelum unus erat toto naturae vultus in orbe, quem dixere Chaos: rudis indigestaque moles nec quicquam nisi pondus iners congestaque eodem non bene iunctarum discordia semina rerum.",
+      "german": "Bevor es das Meer, die Länder und den Himmel gab, der alles bedeckt, hatte die Natur auf der ganzen Welt nur ein einziges Antlitz. Man nannte es Chaos: eine rohe, ungeordnete Masse, nichts als träges Gewicht und am selben Ort zusammengeworfene, schlecht verbundene, widerstreitende Keime der Dinge."
+    },
+    {
+      "id": "livy-auc-preface-1",
+      "author": "Livius",
+      "work": "Ab urbe condita, Vorrede",
+      "sourceUrl": "https://www.thelatinlibrary.com/livy/liv.1.shtml",
+      "latin": "Facturusne operae pretium sim si a primordio urbis res populi Romani perscripserim nec satis scio nec, si sciam, dicere ausim.",
+      "german": "Ob ich etwas der Mühe Wertes vollbringen werde, wenn ich die Geschichte des römischen Volkes vom Ursprung der Stadt an vollständig niederschreibe, weiß ich nicht sicher; und selbst wenn ich es wüsste, würde ich es nicht zu behaupten wagen."
+    },
+    {
+      "id": "livy-auc-preface-2",
+      "author": "Livius",
+      "work": "Ab urbe condita, Vorrede",
+      "sourceUrl": "https://www.thelatinlibrary.com/livy/liv.1.shtml",
+      "latin": "Res est praeterea et immensi operis, ut quae supra septingentesimum annum repetatur et quae ab exiguis profecta initiis eo creverit ut iam magnitudine laboret sua.",
+      "german": "Zudem ist das Unternehmen von gewaltigem Umfang, da die Geschichte mehr als siebenhundert Jahre zurückreicht und, von kleinen Anfängen ausgegangen, so sehr angewachsen ist, dass sie bereits unter ihrer eigenen Größe leidet."
+    },
+    {
+      "id": "hyginus-triptolemus-1",
+      "author": "Hyginus",
+      "work": "Fabulae 147: Triptolemus",
+      "sourceUrl": "https://www.uebungskoenig.de/fileadmin/user_upload/uebungskoenig/latein/klasse8/texte/triptolemus.jpg",
+      "sourceSolutionUrl": "https://www.uebungskoenig.de/fileadmin/user_upload/uebungskoenig/latein/klasse8/texte/triptolemus_loesung.pdf",
+      "latin": "Cum Ceres Proserpinam filiam suam quaereret, devenit ad Eleusinum regem, cuius uxor Cothonea puerum Triptolemum pepererat, seque nutricem lactantem esse simulavit.",
+      "german": "Als Ceres ihre Tochter Proserpina suchte, kam sie zum König Eleusinus. Dessen Frau Cothonea hatte den Jungen Triptolemus geboren, und Ceres gab vor, eine stillende Amme zu sein."
+    },
+    {
+      "id": "hyginus-triptolemus-2",
+      "author": "Hyginus",
+      "work": "Fabulae 147: Triptolemus",
+      "sourceUrl": "https://www.uebungskoenig.de/fileadmin/user_upload/uebungskoenig/latein/klasse8/texte/triptolemus.jpg",
+      "sourceSolutionUrl": "https://www.uebungskoenig.de/fileadmin/user_upload/uebungskoenig/latein/klasse8/texte/triptolemus_loesung.pdf",
+      "latin": "Hanc regina libens nutricem filio suo recepit.",
+      "german": "Die Königin nahm diese Amme gern für ihren Sohn auf."
+    },
+    {
+      "id": "hyginus-triptolemus-3",
+      "author": "Hyginus",
+      "work": "Fabulae 147: Triptolemus",
+      "sourceUrl": "https://www.uebungskoenig.de/fileadmin/user_upload/uebungskoenig/latein/klasse8/texte/triptolemus.jpg",
+      "sourceSolutionUrl": "https://www.uebungskoenig.de/fileadmin/user_upload/uebungskoenig/latein/klasse8/texte/triptolemus_loesung.pdf",
+      "latin": "Ceres cum vellet puerum suum immortalem reddere, interdiu lacte divino alebat, noctu clam in igne ponebat.",
+      "german": "Weil Ceres ihrem Jungen die Unsterblichkeit verleihen wollte, nährte sie ihn tagsüber mit göttlicher Milch und legte ihn nachts heimlich ins Feuer."
+    },
+    {
+      "id": "hyginus-triptolemus-4",
+      "author": "Hyginus",
+      "work": "Fabulae 147: Triptolemus",
+      "sourceUrl": "https://www.uebungskoenig.de/fileadmin/user_upload/uebungskoenig/latein/klasse8/texte/triptolemus.jpg",
+      "sourceSolutionUrl": "https://www.uebungskoenig.de/fileadmin/user_upload/uebungskoenig/latein/klasse8/texte/triptolemus_loesung.pdf",
+      "latin": "Itaque solebant mortales puerum crescere;",
+      "german": "Auf diese Weise wuchs der Junge stärker heran, als Sterbliche gewöhnlich wachsen."
+    },
+    {
+      "id": "hyginus-triptolemus-5",
+      "author": "Hyginus",
+      "work": "Fabulae 147: Triptolemus",
+      "sourceUrl": "https://www.uebungskoenig.de/fileadmin/user_upload/uebungskoenig/latein/klasse8/texte/triptolemus.jpg",
+      "sourceSolutionUrl": "https://www.uebungskoenig.de/fileadmin/user_upload/uebungskoenig/latein/klasse8/texte/triptolemus_loesung.pdf",
+      "latin": "et cum mirarentur parentes eum sic crescere, eam observaverunt.",
+      "german": "Als die Eltern sich darüber wunderten, dass er so heranwuchs, beobachteten sie Ceres."
+    },
+    {
+      "id": "hyginus-triptolemus-6",
+      "author": "Hyginus",
+      "work": "Fabulae 147: Triptolemus",
+      "sourceUrl": "https://www.uebungskoenig.de/fileadmin/user_upload/uebungskoenig/latein/klasse8/texte/triptolemus.jpg",
+      "sourceSolutionUrl": "https://www.uebungskoenig.de/fileadmin/user_upload/uebungskoenig/latein/klasse8/texte/triptolemus_loesung.pdf",
+      "latin": "Cum Ceres eum vellet in ignem mittere, pater terruit.",
+      "german": "Als Ceres ihn ins Feuer legen wollte, erschrak der Vater."
+    },
+    {
+      "id": "hyginus-triptolemus-7",
+      "author": "Hyginus",
+      "work": "Fabulae 147: Triptolemus",
+      "sourceUrl": "https://www.uebungskoenig.de/fileadmin/user_upload/uebungskoenig/latein/klasse8/texte/triptolemus.jpg",
+      "sourceSolutionUrl": "https://www.uebungskoenig.de/fileadmin/user_upload/uebungskoenig/latein/klasse8/texte/triptolemus_loesung.pdf",
+      "latin": "Illa irata Eleusinum exanimavit, at Triptolemo puero suo aeternum beneficium tribuit.",
+      "german": "Darauf tötete die erzürnte Ceres Eleusinus, gewährte aber ihrem Jungen Triptolemus eine ewige Wohltat."
+    },
+    {
+      "id": "hyginus-triptolemus-8",
+      "author": "Hyginus",
+      "work": "Fabulae 147: Triptolemus",
+      "sourceUrl": "https://www.uebungskoenig.de/fileadmin/user_upload/uebungskoenig/latein/klasse8/texte/triptolemus.jpg",
+      "sourceSolutionUrl": "https://www.uebungskoenig.de/fileadmin/user_upload/uebungskoenig/latein/klasse8/texte/triptolemus_loesung.pdf",
+      "latin": "Nam fructus in curru draconibus iuncto tradidit, quo vehens orbem terrarum fructibus obserere potest.",
+      "german": "Denn sie übergab ihm Feldfrüchte auf einem mit Drachen bespannten Wagen; auf diesem konnte er fahrend den Erdkreis mit Früchten bepflanzen."
+    },
+    {
+      "id": "hyginus-triptolemus-9",
+      "author": "Hyginus",
+      "work": "Fabulae 147: Triptolemus",
+      "sourceUrl": "https://www.uebungskoenig.de/fileadmin/user_upload/uebungskoenig/latein/klasse8/texte/triptolemus.jpg",
+      "sourceSolutionUrl": "https://www.uebungskoenig.de/fileadmin/user_upload/uebungskoenig/latein/klasse8/texte/triptolemus_loesung.pdf",
+      "latin": "Postquam domum rediit, Celeus eum pro benefacto interfici iussit.",
+      "german": "Nachdem Triptolemus nach Hause zurückgekehrt war, befahl Celeus, ihn für seine Wohltat zu töten."
+    },
+    {
+      "id": "hyginus-triptolemus-10",
+      "author": "Hyginus",
+      "work": "Fabulae 147: Triptolemus",
+      "sourceUrl": "https://www.uebungskoenig.de/fileadmin/user_upload/uebungskoenig/latein/klasse8/texte/triptolemus.jpg",
+      "sourceSolutionUrl": "https://www.uebungskoenig.de/fileadmin/user_upload/uebungskoenig/latein/klasse8/texte/triptolemus_loesung.pdf",
+      "latin": "Sed re cognita iussu Cereris Triptolemo regnum dedit, quod ex patris nomine Eleusinum nominavit, et Cereris sacrum instituit.",
+      "german": "Nachdem die Sache erkannt worden war, gab Celeus auf Befehl der Ceres Triptolemus das Königreich. Dieser nannte es nach dem Namen seines Vaters Eleusis und errichtete ein Heiligtum der Ceres."
+    },
+    {
+      "id": "phaedrus-1-1-1",
+      "author": "Phaedrus",
+      "work": "Fabulae 1,1: Lupus et agnus",
+      "sourceUrl": "https://www.latein-unterrichten.de/fileadmin/content/unterrichtseinheiten/phaedrus/fabeln/Fabel-I-1-Uebersetzung.pdf",
+      "latin": "Ad rivum eundem lupus et agnus venerant siti compulsi.",
+      "german": "Wolf und Lamm waren, vom Durst getrieben, zum selben Bach gekommen."
+    },
+    {
+      "id": "phaedrus-1-1-2",
+      "author": "Phaedrus",
+      "work": "Fabulae 1,1: Lupus et agnus",
+      "sourceUrl": "https://www.latein-unterrichten.de/fileadmin/content/unterrichtseinheiten/phaedrus/fabeln/Fabel-I-1-Uebersetzung.pdf",
+      "latin": "Superior stabat lupus longeque inferior agnus.",
+      "german": "Der Wolf stand weiter oben, das Lamm weit unterhalb."
+    },
+    {
+      "id": "phaedrus-1-1-3",
+      "author": "Phaedrus",
+      "work": "Fabulae 1,1: Lupus et agnus",
+      "sourceUrl": "https://www.latein-unterrichten.de/fileadmin/content/unterrichtseinheiten/phaedrus/fabeln/Fabel-I-1-Uebersetzung.pdf",
+      "latin": "Tunc fauce improba latro incitatus iurgii causam intulit.",
+      "german": "Da suchte der Räuber, von seinem gierigen Rachen getrieben, einen Anlass zum Streit."
+    },
+    {
+      "id": "phaedrus-1-1-4",
+      "author": "Phaedrus",
+      "work": "Fabulae 1,1: Lupus et agnus",
+      "sourceUrl": "https://www.latein-unterrichten.de/fileadmin/content/unterrichtseinheiten/phaedrus/fabeln/Fabel-I-1-Uebersetzung.pdf",
+      "latin": "Cur inquit turbulentam fecisti mihi aquam bibenti?",
+      "german": "Warum hast du mir, als ich trank, das Wasser trüb gemacht?"
+    },
+    {
+      "id": "phaedrus-1-1-5",
+      "author": "Phaedrus",
+      "work": "Fabulae 1,1: Lupus et agnus",
+      "sourceUrl": "https://www.latein-unterrichten.de/fileadmin/content/unterrichtseinheiten/phaedrus/fabeln/Fabel-I-1-Uebersetzung.pdf",
+      "latin": "Laniger contra timens: Qui possum, quaeso, facere, quod quereris, lupe?",
+      "german": "Der Wollträger erwiderte ängstlich: Wie könnte ich bitte tun, was du mir vorwirfst, Wolf?"
+    },
+    {
+      "id": "phaedrus-1-1-6",
+      "author": "Phaedrus",
+      "work": "Fabulae 1,1: Lupus et agnus",
+      "sourceUrl": "https://www.latein-unterrichten.de/fileadmin/content/unterrichtseinheiten/phaedrus/fabeln/Fabel-I-1-Uebersetzung.pdf",
+      "latin": "A te decurrit ad meos haustus liquor.",
+      "german": "Von dir fließt das Wasser zu meiner Trinkstelle hinab."
+    },
+    {
+      "id": "phaedrus-1-1-7",
+      "author": "Phaedrus",
+      "work": "Fabulae 1,1: Lupus et agnus",
+      "sourceUrl": "https://www.latein-unterrichten.de/fileadmin/content/unterrichtseinheiten/phaedrus/fabeln/Fabel-I-1-Uebersetzung.pdf",
+      "latin": "Repulsus ille veritatis viribus: Ante hos sex menses male ait dixisti mihi.",
+      "german": "Von der Kraft der Wahrheit zurückgewiesen sagte jener: Vor sechs Monaten hast du schlecht über mich gesprochen."
+    },
+    {
+      "id": "phaedrus-1-1-8",
+      "author": "Phaedrus",
+      "work": "Fabulae 1,1: Lupus et agnus",
+      "sourceUrl": "https://www.latein-unterrichten.de/fileadmin/content/unterrichtseinheiten/phaedrus/fabeln/Fabel-I-1-Uebersetzung.pdf",
+      "latin": "Respondit agnus: Equidem natus non eram.",
+      "german": "Das Lamm antwortete: Damals war ich noch gar nicht geboren."
+    },
+    {
+      "id": "phaedrus-1-1-9",
+      "author": "Phaedrus",
+      "work": "Fabulae 1,1: Lupus et agnus",
+      "sourceUrl": "https://www.latein-unterrichten.de/fileadmin/content/unterrichtseinheiten/phaedrus/fabeln/Fabel-I-1-Uebersetzung.pdf",
+      "latin": "Pater, hercle, tuus ille inquit male dixit mihi.",
+      "german": "Beim Herkules, sagte jener, dein Vater hat schlecht über mich gesprochen."
+    },
+    {
+      "id": "phaedrus-1-1-10",
+      "author": "Phaedrus",
+      "work": "Fabulae 1,1: Lupus et agnus",
+      "sourceUrl": "https://www.latein-unterrichten.de/fileadmin/content/unterrichtseinheiten/phaedrus/fabeln/Fabel-I-1-Uebersetzung.pdf",
+      "latin": "Atque ita correptum lacerat iniusta nece.",
+      "german": "Und so packte der Wolf das Lamm und zerfleischte es in ungerechtem Mord."
     }
   ]
 }

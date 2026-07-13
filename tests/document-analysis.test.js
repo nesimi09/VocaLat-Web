@@ -1,5 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { extractLatinDocument } from "../document-analysis.js";
 import { tokenizeLatinText } from "../learning-engine.js";
 
@@ -33,6 +34,12 @@ servavit.                                            (71 Wérter)
 
 const latinWords = new Set(`ab attrahere centaurus conditum confixit coniunx credens cum dedit diligenter dixit eius eo esse est et exceptum fidem flumen habere hoc id ille imploravisset in intervenisset ipso iuberet moriens ne philtrum quantam quam rogatus sagittas sagittis sanguinem sciret se servavit si sperneret sublatam suum tinctas transferret ut vellet veneni veneno vestem violare vim voluit`.split(" "));
 const morphology = new Map([...latinWords].map(word => [word, [{ forms: [word], morphology: {} }]]));
+const triptolemusOcr = readFileSync(new URL("./fixtures/triptolemus-ocr.txt", import.meta.url), "utf8");
+const triptolemusLatin = "Cum Ceres Proserpinam filiam suam quaereret, devenit ad Eleusinum regem, cuius uxor Cothonea puerum Triptolemum pepererat, seque nutricem lactantem esse simulavit. Hanc regina libens nutricem filio suo recepit. Ceres cum vellet puerum suum immortalem reddere, interdiu lacte divino alebat, noctu clam in igne ponebat. Itaque solebant mortales puerum crescere; et cum mirarentur parentes eum sic crescere, eam observaverunt. Cum Ceres eum vellet in ignem mittere, pater terruit. Illa irata Eleusinum exanimavit, at Triptolemo puero suo aeternum beneficium tribuit. Nam fructus in curru draconibus iuncto tradidit, quo vehens orbem terrarum fructibus obserere potest. Postquam domum rediit, Celeus* eum pro benefacto interfici iussit. Sed re cognita iussu Cereris Triptolemo regnum dedit, quod ex patris nomine Eleusinum nominavit, et Cereris sacrum instituit.";
+const triptolemusMorphology = new Map(tokenizeLatinText(triptolemusLatin).map(token => [token.normalized, [{ forms: [token.normalized], morphology: {} }]]));
+const phaedrusOcr = readFileSync(new URL("./fixtures/phaedrus-wolf-lamm-ocr.txt", import.meta.url), "utf8");
+const phaedrusLatin = "Ad rivum eundem lupus et agnus venerant siti compulsi. Superior stabat lupus longeque inferior agnus. Tunc fauce improba latro incitatus iurgii causam intulit.,Cur\" inquit,turbulentam fecisti mihi aquam bibenti?\" Laniger contra timens:,Qui possum, quaeso, facere, quod quereris, lupe? A te decurrit ad meos haustüs liquor.\" Repulsus ille veritatis viribus:,Ante hos sex menses male\" ait, dixisti mihi.\" Respondit agnus:,Equidem natus non eram.\" Pater, hercle, tuus\" ille inquit, male dixit mihi.\" Atque ita correptum lacerat iniustà nece.";
+const phaedrusMorphology = new Map(tokenizeLatinText(phaedrusLatin).map(token => [token.normalized, [{ forms: [token.normalized], morphology: {} }]]));
 
 test("a mixed German-Latin page keeps only the Latin passage", () => {
   const result = extractLatinDocument(nessusOcr, morphology);
@@ -44,10 +51,42 @@ test("a mixed German-Latin page keeps only the Latin passage", () => {
   assert.equal(tokenizeLatinText(result.latinText).length, 71);
 });
 
+test("the Latin passage is still isolated when OCR removes every blank line", () => {
+  const denseOcr = nessusOcr.replace(/\n\s*\n+/g, "\n");
+  const result = extractLatinDocument(denseOcr, morphology);
+  assert.equal(result.detected, true);
+  assert.match(result.latinText, /^Nessus centaurus rogatus est/);
+  assert.match(result.latinText, /diligenter servavit\.$/);
+  assert.equal(tokenizeLatinText(result.latinText).length, 71);
+  assert.doesNotMatch(result.latinText, /ÜBUNGSKÓNIG|Mythologie|Wérter|Liebestrank/);
+});
+
 test("OCR footnotes become page-specific vocabulary", () => {
   const result = extractLatinDocument(nessusOcr, morphology);
   assert.deepEqual(result.glossary.map(entry => [entry.lemma, entry.meanings[0]]), [
     ["philtrum", "Liebestrank"],
     ["spernere", "verschmähen"]
   ]);
+});
+
+test("a real second worksheet separates a continuous Latin block from inline footnotes", () => {
+  const result = extractLatinDocument(triptolemusOcr, triptolemusMorphology);
+  assert.equal(result.detected, true);
+  assert.equal(result.latinText, triptolemusLatin);
+  assert.equal(tokenizeLatinText(result.latinText).length, 119);
+  assert.doesNotMatch(result.latinText, /UBUNGSKÓNIG|Mythologie|Wórter|Keleos|sáugen|besüen/);
+  assert.deepEqual(result.glossary.map(entry => [entry.lemma, entry.forms, entry.meanings[0]]), [
+    ["lactare", ["lactare"], "säugen"],
+    ["nutrix", ["nutrix", "nutricis"], "Amme"],
+    ["exanimare", ["exanimare"], "hier: töten"],
+    ["obserere", ["obserere", "obsero", "obsevi", "obsitum"], "besäen, bepflanzen"]
+  ]);
+});
+
+test("widely spaced Latin paragraphs are kept as one document while line numbers are removed", () => {
+  const result = extractLatinDocument(phaedrusOcr, phaedrusMorphology);
+  assert.equal(result.detected, true);
+  assert.equal(result.latinText, phaedrusLatin);
+  assert.equal(tokenizeLatinText(result.latinText).length, 79);
+  assert.doesNotMatch(result.latinText, /ÜBERSETZUNG|Jesper|\b18\b|\bn Respondit\b|5\^/);
 });
