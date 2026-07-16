@@ -19,7 +19,7 @@ const EMAIL_PATTERN = /\b[^\s@]+@[^\s@]+\.[^\s@]+\b/;
 const SENSITIVE_KEY_PATTERN = /(?:secret|password|private|token|webhook|merchant|payer|customer|email)/i;
 
 /**
- * Validate the public, static configuration for the PayPal sandbox prototype.
+ * Validate the public, static configuration for the PayPal sandbox checkout.
  *
  * This module deliberately supports sandbox subscriptions only. It must never
  * receive a client secret, an email address or other personal/payment data.
@@ -43,8 +43,8 @@ export function validatePaymentConfig(config, now = Date.now()) {
 
   if (config.schemaVersion !== 1) errors.push("Die Version der Zahlungskonfiguration wird nicht unterstützt.");
   if (typeof config.enabled !== "boolean") errors.push("Der Aktivierungsstatus ist ungültig.");
-  if (config.environment !== "sandbox") errors.push("Dieser Prototyp erlaubt ausschließlich die PayPal-Sandbox.");
-  if (config.currency !== "EUR") errors.push("Der Prototyp unterstützt ausschließlich EUR.");
+  if (config.environment !== "sandbox") errors.push("Diese Web-Version erlaubt ausschließlich die PayPal-Sandbox.");
+  if (config.currency !== "EUR") errors.push("Die Web-Version unterstützt ausschließlich EUR.");
   if (config.amount !== "4.99") errors.push("Der Monatspreis muss 4,99 EUR betragen.");
   if (config.billingInterval !== "MONTH" || config.billingIntervalCount !== 1) {
     errors.push("Das Abrechnungsintervall muss genau ein Monat sein.");
@@ -69,12 +69,12 @@ export function validatePaymentConfig(config, now = Date.now()) {
   const expiresAtValid = config.expiresAt === "" || Number.isFinite(expiresAt);
   if (!expiresAtValid) errors.push("Der Ablaufzeitpunkt des Sandbox-Tests ist ungültig.");
 
-  if (config.enabled === true && (!config.clientId || !config.planId || !config.expiresAt)) {
-    errors.push("Für einen aktivierten Sandbox-Test fehlen Client-ID, Plan-ID oder Ablaufzeitpunkt.");
+  if (config.enabled === true && (!config.clientId || !config.planId)) {
+    errors.push("Für einen aktivierten Sandbox-Zugang fehlen Client-ID oder Plan-ID.");
   }
 
   const valid = errors.length === 0;
-  const expired = valid && config.enabled === true && expiresAt <= Number(now);
+  const expired = valid && config.enabled === true && Number.isFinite(expiresAt) && expiresAt <= Number(now);
   return {
     valid,
     ready: valid && config.enabled === true && !expired,
@@ -119,7 +119,7 @@ export function paymentConfigStatus(config, now = Date.now()) {
     return {
       state: "expired",
       ready: false,
-      label: "PayPal-Test automatisch beendet",
+      label: "PayPal-Sandbox abgelaufen",
       errors: []
     };
   }
@@ -127,7 +127,7 @@ export function paymentConfigStatus(config, now = Date.now()) {
     return {
       state: "disabled",
       ready: false,
-      label: "PayPal-Test noch nicht aktiviert",
+      label: "PayPal ist nicht aktiviert",
       errors: []
     };
   }

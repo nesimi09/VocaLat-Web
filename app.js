@@ -8,12 +8,13 @@ import { analyzeLatinMorphology, prepareMorphology } from "./morphology.js";
 import { recognizeLatinText, validateOcrImage } from "./ocr.js";
 
 const NAV = [
-  { id: "lernen", label: "Kurs", icon: "book" },
+  { id: "kurs", label: "Kurs", icon: "course" },
+  { id: "vokabeln", label: "Vokabeln", icon: "book" },
   { id: "ueben", label: "Üben", icon: "cards" },
   { id: "uebersetzen", label: "Übersetzen", icon: "scan" },
-  { id: "grammatik", label: "Grammatik", icon: "textbook" },
-  { id: "fortschritt", label: "Sitzung", icon: "chart" }
+  { id: "grammatik", label: "Grammatik", icon: "textbook" }
 ];
+const ROUTES = new Set([...NAV.map(item => item.id), "fortschritt"]);
 
 const CATEGORIES = [
   { id: "deklinationen", title: "Deklinationen", icon: "▦" },
@@ -29,9 +30,9 @@ const COURSE_ACCESS_KEY = "vocalat-course-access-v1";
 const COURSE_PROGRESS_KEY = "vocalat-course-progress-v1";
 
 const state = {
-  vocabulary: [], grammar: [], route: "lernen", detail: null,
+  vocabulary: [], grammar: [], route: "kurs", detail: null,
   search: "", lesson: "all", favoritesOnly: false,
-  learnView: "course", course: null, courseAccessManifest: null, courseAccessGranted: false,
+  course: null, courseAccessManifest: null, courseAccessGranted: false,
   courseAccessRecord: null, courseAccessBusy: false, courseAccessError: "",
   courseModuleId: null, coursePackIndex: 0, coursePhase: "map", courseRound: [], courseQuestionIndex: 0,
   courseBaseQuestionCount: 0, courseAttempts: [], courseAnswerRecorded: false, courseSelectedChoice: null,
@@ -151,6 +152,7 @@ function renderNav() {
 
 function navIcon(name) {
   const paths = {
+    course: '<path d="M5 4.5h10.5A3.5 3.5 0 0 1 19 8v11.5H8.5A3.5 3.5 0 0 0 5 23z"/><path d="M8.5 7.5h7M8.5 11h7M8.5 14.5h4"/>',
     book: '<path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H12v16H6.5A2.5 2.5 0 0 0 4 21.5zM20 5.5A2.5 2.5 0 0 0 17.5 3H12v16h5.5a2.5 2.5 0 0 1 2.5 2.5z"/>',
     cards: '<rect x="5" y="4" width="14" height="16" rx="2"/><path d="M8 1.8h8M2 8v8"/>',
     scan: '<path d="M4 8V5a1 1 0 0 1 1-1h3M16 4h3a1 1 0 0 1 1 1v3M20 16v3a1 1 0 0 1-1 1h-3M8 20H5a1 1 0 0 1-1-1v-3"/><path d="M8 9h8M8 12h8M8 15h5"/>',
@@ -167,17 +169,9 @@ function navigate(route, detail = null) {
   render();
 }
 
-function renderLearn() {
-  if (state.learnView === "dictionary") return renderVocabularyBrowser();
-  setHeader("Kurs", "Via Latina");
-  renderCourse();
-}
-
-function learnSwitcher() {
-  return `<div class="learn-switcher" role="group" aria-label="Lernbereich wählen">
-    <button class="${state.learnView === "course" ? "active" : ""}" data-learn-view="course" type="button" aria-pressed="${state.learnView === "course"}">Geführter Kurs</button>
-    <button class="${state.learnView === "dictionary" ? "active" : ""}" data-learn-view="dictionary" type="button" aria-pressed="${state.learnView === "dictionary"}">Wörterbuch</button>
-  </div>`;
+function renderAtTop() {
+  window.scrollTo({ top: 0, behavior: "auto" });
+  render();
 }
 
 function renderVocabularyBrowser() {
@@ -194,7 +188,7 @@ function renderVocabularyBrowser() {
     return `<button class="card lesson-card" data-lesson-card="${n}" type="button"><div class="card-top"><h3>Lektion ${n}</h3><span class="meta">${entries.length} Vokabeln</span></div><div class="progress-track"><div class="progress-fill" style="width:${entries.length ? done / entries.length * 100 : 0}%"></div></div><span class="meta">${done} von ${entries.length} angesehen</span></button>`;
   }).join("")}</div>`;
 
-  app.innerHTML = `${learnSwitcher()}<div class="toolbar"><label class="search-wrap"><span class="sr-only">Vokabeln durchsuchen</span><input class="field" id="search" type="search" placeholder="Latein, Deutsch, Grammatik" value="${escapeHtml(state.search)}"></label><select class="select" id="lesson-filter" aria-label="Lektion filtern"><option value="all">Alle Lektionen</option>${lessons().map(n => `<option value="${n}" ${state.lesson === String(n) ? "selected" : ""}>Lektion ${n}</option>`).join("")}</select><label class="toggle"><input id="favorite-filter" type="checkbox" ${state.favoritesOnly ? "checked" : ""}> Nur Favoriten</label></div>${lessonCards}<div class="section-heading"><h2>Vokabeln</h2><span>${filtered.length} Einträge</span></div><div class="vocab-list">${filtered.length ? filtered.map(vocabRow).join("") : `<div class="empty card">Keine Treffer. Passe Suche oder Filter an.</div>`}</div>`;
+  app.innerHTML = `<div class="page-utility"><span>${state.vocabulary.length} Buchvokabeln</span><button class="text-button" data-route="fortschritt" type="button">Sitzungsstand</button></div><div class="toolbar"><label class="search-wrap"><span class="sr-only">Vokabeln durchsuchen</span><input class="field" id="search" type="search" placeholder="Latein, Deutsch, Grammatik" value="${escapeHtml(state.search)}"></label><select class="select" id="lesson-filter" aria-label="Lektion filtern"><option value="all">Alle Lektionen</option>${lessons().map(n => `<option value="${n}" ${state.lesson === String(n) ? "selected" : ""}>Lektion ${n}</option>`).join("")}</select><label class="toggle"><input id="favorite-filter" type="checkbox" ${state.favoritesOnly ? "checked" : ""}> Nur Favoriten</label></div>${lessonCards}<div class="section-heading"><h2>Vokabeln</h2><span>${filtered.length} Einträge</span></div><div class="vocab-list">${filtered.length ? filtered.map(vocabRow).join("") : `<div class="empty card">Keine Treffer. Passe Suche oder Filter an.</div>`}</div>`;
 }
 
 function vocabRow(v) {
@@ -203,8 +197,9 @@ function vocabRow(v) {
 }
 
 function renderCourse() {
+  setHeader("Kurs", "Via Latina");
   if (!state.course?.modules?.length) {
-    app.innerHTML = `${learnSwitcher()}<div class="card empty">Der Kurs konnte nicht geladen werden.</div>`;
+    app.innerHTML = `<div class="card empty">Der Kurs konnte nicht geladen werden.</div>`;
     return;
   }
   if (!state.courseAccessGranted) return renderCourseGate();
@@ -215,52 +210,37 @@ function renderCourse() {
 }
 
 function renderCourseGate() {
-  const preview = state.course.modules.slice(0, 4);
   const paymentStatus = paymentConfigStatus(state.paymentConfig);
   const monthlyPrice = formatMonthlyPrice(state.paymentConfig) || "4,99 € monatlich";
-  app.innerHTML = `${learnSwitcher()}<div class="course-gate">
-    <section class="course-gate-hero">
-      <p class="course-kicker">VocaLat Kurs-Pass · Prototyp</p>
-      <h2>Latein verstehen – Schritt für Schritt.</h2>
-      <p>Ein klarer Lernweg für Schülerinnen und Schüler, die bei den Grundlagen beginnen und trotzdem ernsthaft gefordert werden möchten.</p>
-    </section>
-    <div class="course-gate-grid">
-      <section class="card course-plan">
-        <span class="course-plan-badge">Geführter Kurs</span>
-        <h3>${escapeHtml(state.course.title || "Via Latina")}</h3>
-        <p class="meta">10 Module · alle Buchvokabeln · Grammatik und Wiederholung</p>
-        <ul class="course-feature-list">
-          <li>Neue Wörter in überschaubaren 8er-Paketen</li>
-          <li>Aktiver Abruf statt bloßem Durchlesen</li>
-          <li>Fehler kommen nach zwei Aufgaben erneut</li>
-          <li>Bestanden erst ab 80 % und korrigierten Fehlern</li>
-        </ul>
-      </section>
-      <div class="course-access-stack">
-        <section class="card course-code-card">
-          <span class="course-plan-badge">Codezugang</span>
-          <h3>Kurscode eingeben</h3>
-          <form class="course-code-form" id="course-access-form">
-            <label for="course-access-code">Freischaltcode</label>
-            <input class="field" id="course-access-code" name="courseCode" autocomplete="one-time-code" autocapitalize="characters" spellcheck="false" placeholder="VL1-…" required ${state.courseAccessBusy ? "disabled" : ""}>
-            ${state.courseAccessError ? `<div class="inline-alert error" role="alert">${escapeHtml(state.courseAccessError)}</div>` : ""}
-            <button class="button" type="submit" ${state.courseAccessBusy ? "disabled" : ""}>${state.courseAccessBusy ? "Code wird geprüft …" : "Mit Code freischalten"}</button>
-          </form>
-          <small class="course-code-note">Der Zugang gilt nur für diese Browser-Sitzung. Im Repository stehen keine Klartextcodes.</small>
-        </section>
-        <section class="card course-payment-card">
-          <div class="course-payment-head"><span class="course-plan-badge">Monatsabo · Sandbox</span><strong>${escapeHtml(monthlyPrice)}</strong></div>
-          <h3>Mit PayPal testen</h3>
-          <p class="meta">Vollzugang zum geführten Kurs. Dies ist noch keine Live-Zahlung.</p>
-          <div class="payment-status ${paymentStatus.state}"><span aria-hidden="true">${paymentStatus.ready ? "✓" : "i"}</span><span>${escapeHtml(paymentStatus.label)}</span></div>
-          ${paymentStatus.ready ? state.paymentState === "error" ? `<button class="button secondary" data-payment-retry type="button">PayPal-Sandbox erneut laden</button>` : `<div id="paypal-subscription-buttons" aria-label="PayPal-Sandbox-Abo"></div>` : `<button class="button payment-disabled" type="button" disabled>PayPal-Sandbox noch nicht verbunden</button>`}
-          ${state.paymentError ? `<div class="inline-alert error" role="alert">${escapeHtml(state.paymentError)}</div>` : ""}
-          <small class="course-code-note">Der GitHub-Pages-Prototyp entsperrt nach Sandbox-Bestätigung nur diese Sitzung. Eine sichere Live-Freischaltung benötigt später ein Backend.</small>
-        </section>
+  app.innerHTML = `<div class="course-gate">
+    <header class="course-intro">
+      <p class="course-kicker">Via Latina</p>
+      <h2>Kurszugang</h2>
+      <p>${state.course.modules.length} Module · Vokabeln, Grammatik und Wiederholungen aus dem Buch</p>
+    </header>
+    <section class="course-access" aria-labelledby="course-payment-title">
+      <div class="course-payment-card">
+        <div class="course-payment-head"><div><h3 id="course-payment-title">Monatszugang mit PayPal</h3><p class="meta">Freischaltung für den vollständigen Kurs</p></div><strong>${escapeHtml(monthlyPrice)}</strong></div>
+        <div class="payment-status ${paymentStatus.state}">${escapeHtml(paymentStatus.label)}</div>
+        ${paymentStatus.ready ? state.paymentState === "error" ? `<button class="button secondary" data-payment-retry type="button">PayPal erneut laden</button>` : `<div id="paypal-subscription-buttons" aria-label="PayPal-Sandbox-Abo"></div>` : `<button class="button payment-disabled" type="button" disabled>PayPal ist gerade nicht verfügbar</button>`}
+        ${state.paymentError ? `<div class="inline-alert error" role="alert">${escapeHtml(state.paymentError)}</div>` : ""}
+        <p class="course-sandbox-note"><strong>Sandbox:</strong> Derzeit wird kein echtes Geld abgebucht.</p>
+        <p class="course-session-note">Nach der Bestätigung gilt der Zugang für diese Browsersitzung.</p>
       </div>
-    </div>
-    <section class="card course-preview" aria-label="Kursvorschau">
-      ${preview.map((module, index) => `<div class="course-preview-row"><span class="course-preview-number">${index + 1}</span><span><strong>${escapeHtml(module.title)}</strong><small>${escapeHtml(module.story)}</small></span></div>`).join("")}
+      <details class="course-code-access" ${state.courseAccessError ? "open" : ""}>
+        <summary>Stattdessen Kurscode verwenden</summary>
+        <form class="course-code-form" id="course-access-form">
+          <label for="course-access-code">Freischaltcode</label>
+          <input class="field" id="course-access-code" name="courseCode" autocomplete="one-time-code" autocapitalize="characters" spellcheck="false" placeholder="VL1-…" required ${state.courseAccessBusy ? "disabled" : ""}>
+          ${state.courseAccessError ? `<div class="inline-alert error" role="alert">${escapeHtml(state.courseAccessError)}</div>` : ""}
+          <button class="button" type="submit" ${state.courseAccessBusy ? "disabled" : ""}>${state.courseAccessBusy ? "Code wird geprüft …" : "Mit Code freischalten"}</button>
+        </form>
+        <small class="course-code-note">Der Code und der Kursstand werden nicht dauerhaft im Browser gespeichert.</small>
+      </details>
+    </section>
+    <section class="course-outline" aria-labelledby="course-outline-title">
+      <div class="section-heading"><h2 id="course-outline-title">Kursinhalt</h2><span>${state.course.modules.length} Module</span></div>
+      <ol class="course-outline-list">${state.course.modules.map((module, index) => `<li><span>${index + 1}</span><strong>${escapeHtml(module.title)}</strong><small>Lektion ${lessonRange(module)}</small></li>`).join("")}</ol>
     </section>
   </div>`;
   if (paymentStatus.ready && state.paymentState !== "error") requestAnimationFrame(() => { void mountPayPalSubscription(); });
@@ -271,7 +251,7 @@ async function mountPayPalSubscription() {
   const sdkUrl = buildPayPalSdkUrl(state.paymentConfig);
   if (!container || !sdkUrl || container.dataset.rendered === "true") return;
   container.dataset.rendered = "true";
-  container.innerHTML = `<p class="meta">PayPal-Sandbox wird geladen …</p>`;
+  container.innerHTML = `<p class="meta">PayPal wird geladen …</p>`;
   try {
     const paypal = await loadPayPalSdk(sdkUrl);
     if (!container.isConnected) return;
@@ -286,21 +266,21 @@ async function mountPayPalSubscription() {
         state.paymentError = "";
         state.courseAccessGranted = true;
         state.coursePhase = "map";
-        render();
-        announce("PayPal-Sandbox-Abo bestätigt. Kurs für diese Sitzung freigeschaltet.");
+        renderAtTop();
+        announce("PayPal-Sandbox bestätigt. Kurs für diese Sitzung freigeschaltet.");
       },
       onCancel() {
         state.paymentState = "cancelled";
-        state.paymentError = "Der PayPal-Sandbox-Test wurde abgebrochen.";
+        state.paymentError = "Die PayPal-Zahlung wurde abgebrochen.";
         render();
       },
       onError() {
         state.paymentState = "error";
-        state.paymentError = "Der PayPal-Sandbox-Test konnte nicht abgeschlossen werden.";
+        state.paymentError = "Die PayPal-Zahlung konnte nicht abgeschlossen werden.";
         render();
       }
     });
-    if (typeof buttons.isEligible === "function" && !buttons.isEligible()) throw new Error("PayPal ist für diesen Sandbox-Test nicht verfügbar.");
+    if (typeof buttons.isEligible === "function" && !buttons.isEligible()) throw new Error("PayPal ist derzeit nicht verfügbar.");
     await buttons.render(container);
   } catch (error) {
     if (!container.isConnected) return;
@@ -318,8 +298,8 @@ function loadPayPalSdk(sdkUrl) {
     script.src = sdkUrl;
     script.async = true;
     script.dataset.vocalatPaypal = "sandbox";
-    script.addEventListener("load", () => window.paypal?.Buttons ? resolve(window.paypal) : reject(new Error("PayPal-Sandbox wurde nicht vollständig geladen.")), { once: true });
-    script.addEventListener("error", () => { script.remove(); reject(new Error("PayPal-Sandbox konnte nicht geladen werden.")); }, { once: true });
+    script.addEventListener("load", () => window.paypal?.Buttons ? resolve(window.paypal) : reject(new Error("PayPal wurde nicht vollständig geladen.")), { once: true });
+    script.addEventListener("error", () => { script.remove(); reject(new Error("PayPal konnte nicht geladen werden.")); }, { once: true });
     document.head.append(script);
   });
   return paypalSdkPromise;
@@ -379,39 +359,33 @@ function renderCourseMap() {
   const passedPacks = moduleInfos.reduce((sum, info) => sum + info.passedPacks, 0);
   const recommended = recommendedCourseTarget();
   const percent = totalPacks ? Math.round(passedPacks / totalPacks * 100) : 0;
+  const completedModules = moduleInfos.filter(info => info.totalPacks > 0 && info.passedPacks === info.totalPacks).length;
 
-  app.innerHTML = `${learnSwitcher()}<div class="course-map">
-    <section class="course-map-hero">
-      <div class="course-map-hero-copy">
-        <p class="course-kicker">Via Latina · dein Lernweg</p>
-        <h2>Vom Satzkern bis zum Originaltext.</h2>
-        <p>Arbeite in deinem Tempo. Alte Wörter mischen sich in neue Runden, Hinweise helfen ohne das Niveau zu senken.</p>
-        <div class="course-map-actions">
-          <button class="button" data-course-continue type="button">${passedPacks ? "Weiterlernen" : "Erstes Paket starten"}</button>
-          <button class="button secondary" data-course-lock type="button">Zugang beenden</button>
-        </div>
+  app.innerHTML = `<div class="course-map">
+    <header class="course-overview">
+      <p class="course-kicker">Via Latina</p>
+      <h2>Kursübersicht</h2>
+      <p class="course-overview-meta"><strong>${passedPacks} von ${totalPacks}</strong> Paketen in dieser Sitzung abgeschlossen</p>
+      <div class="progress-track" role="progressbar" aria-label="Kursfortschritt" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${percent}"><div class="progress-fill" style="width:${percent}%"></div></div>
+      <div class="course-overview-actions">
+        <button class="button" data-course-continue type="button">${passedPacks ? "Weiterlernen" : "Erstes Paket starten"}</button>
+        <div><button class="text-button" data-route="fortschritt" type="button">Sitzungsstand</button><button class="text-button" data-course-lock type="button">Zugang beenden</button></div>
       </div>
-      <div class="course-map-hero-stats" aria-label="Kursstand dieser Sitzung">
-        <div class="course-stat"><strong>${passedPacks}/${totalPacks}</strong><span>Pakete bestanden</span></div>
-        <div class="course-stat"><strong>${percent} %</strong><span>Sitzungsfortschritt</span></div>
-        <div class="course-stat"><strong>${state.courseProgress.xp || 0}</strong><span>Lernpunkte</span></div>
-        <div class="course-stat"><strong>${moduleInfos.filter(info => info.passedPacks === info.totalPacks && info.totalPacks).length}</strong><span>Module gemeistert</span></div>
-      </div>
-    </section>
-    <div>
-      <div class="section-heading"><h2>Die zehn Etappen</h2><span>Fortschritt nur in dieser Sitzung</span></div>
-      <div class="course-module-list">${moduleInfos.map(({ module, passedPacks: done, totalPacks: total, status }, index) => {
+    </header>
+    <section class="course-module-section" aria-labelledby="course-modules-title">
+      <div class="section-heading"><h2 id="course-modules-title">Module</h2><span>${completedModules}/${moduleInfos.length} abgeschlossen</span></div>
+      <ol class="course-module-list">${moduleInfos.map(({ module, passedPacks: done, totalPacks: total, status }, index) => {
         const isRecommended = recommended.module.id === module.id;
         const statusKey = status.status;
         const statusClass = statusKey === "complete" ? "passed" : statusKey;
         const statusLabel = statusKey === "complete" ? "Bestanden" : statusKey === "in-progress" ? "Begonnen" : "Neu";
-        return `<button class="course-module ${statusClass} ${isRecommended ? "recommended" : ""}" data-course-module="${escapeHtml(module.id)}" type="button">
+        return `<li><button class="course-module ${statusClass} ${isRecommended ? "recommended" : ""}" data-course-module="${escapeHtml(module.id)}" type="button" ${isRecommended ? 'aria-current="step"' : ""}>
           <span class="course-module-marker">${statusKey === "complete" ? "✓" : index + 1}</span>
-          <span class="course-module-copy"><h3>${escapeHtml(module.title)}</h3><p>${escapeHtml(module.story)}</p><span class="course-module-meta"><span class="course-chip">Lektion ${lessonRange(module)}</span><span class="course-chip" aria-label="Schwierigkeit ${module.difficulty} von 5">${"◆".repeat(module.difficulty)}${"◇".repeat(Math.max(5 - module.difficulty, 0))}</span>${isRecommended ? `<span class="course-chip">Empfohlen</span>` : ""}</span></span>
+          <span class="course-module-copy"><h3>${escapeHtml(module.title)}</h3><small>Lektion ${lessonRange(module)} · ${total} ${total === 1 ? "Paket" : "Pakete"}</small></span>
           <span class="course-module-progress"><strong>${done}/${total}</strong><small>${statusLabel}</small></span>
-        </button>`;
-      }).join("")}</div>
-    </div>
+        </button></li>`;
+      }).join("")}</ol>
+    </section>
   </div>`;
 }
 
@@ -434,29 +408,30 @@ function renderCourseModule() {
   const grammarLinks = (module.grammarTitles || []).map(title => ({ title, index: state.grammar.findIndex(section => section.titel === title) })).filter(item => item.index >= 0);
 
   app.innerHTML = `<div class="course-detail">
-    <div class="course-detail-header">
-      <button class="button secondary course-back" data-course-map type="button">← Kurskarte</button>
-      <div class="course-detail-title"><div><p class="course-kicker">Modul ${moduleNumber(module)} · Lektion ${lessonRange(module)}</p><h2>${escapeHtml(module.title)}</h2><p>${escapeHtml(module.story)}</p></div><span class="course-difficulty" aria-label="Schwierigkeit ${module.difficulty} von 5">${"◆".repeat(module.difficulty)}${"◇".repeat(Math.max(5 - module.difficulty, 0))}</span></div>
-    </div>
-    <ul class="course-objectives">${module.objectives.map(objective => `<li>✓ ${escapeHtml(objective)}</li>`).join("")}</ul>
-    <div class="course-concept-grid">
-      <section class="card course-concept">
-        <p class="course-kicker">Verstehen</p>
-        <h3>${escapeHtml(module.grammarTitles?.[0] || "Grammatik im Satz")}</h3>
-        ${conceptParagraphs.map(paragraph => `<p>${escapeHtml(paragraph)}</p>`).join("")}
-        <div class="course-rule"><strong>Merkregel:</strong> ${escapeHtml(module.concept.rule)}</div>
-        <div class="course-example"><strong lang="la">${escapeHtml(example.latin)}</strong>${example.german ? `<span>${escapeHtml(example.german)}</span>` : ""}</div>
-        <p class="course-mistake"><strong>Typischer Fehler:</strong> ${escapeHtml(module.concept.commonMistake)}</p>
-        ${grammarLinks.length ? `<div class="course-module-meta">${grammarLinks.map(item => `<button class="course-chip" data-grammar-section="${item.index}" type="button">${escapeHtml(item.title)} ›</button>`).join("")}</div>` : ""}
-      </section>
-      <aside class="card course-challenge"><p class="course-kicker">Adler-Challenge · freiwillig</p><h3>${escapeHtml(module.challenge.title)}</h3><p>${escapeHtml(module.challenge.prompt)}</p><small class="meta">Die Challenge beeinflusst die Freigabe des nächsten Pakets nicht.</small></aside>
-    </div>
+    <header class="course-detail-header">
+      <button class="text-button course-back" data-course-map type="button">← Kursübersicht</button>
+      <p class="course-kicker">Modul ${moduleNumber(module)} · Lektion ${lessonRange(module)}</p>
+      <h2>${escapeHtml(module.title)}</h2>
+      <p>${escapeHtml(module.story)}</p>
+      <small>Stufe ${module.difficulty} von 5</small>
+    </header>
+    <section class="course-objectives-section" aria-labelledby="course-objectives-title"><h3 id="course-objectives-title">Lernziele</h3><ul class="course-objectives">${module.objectives.map(objective => `<li>${escapeHtml(objective)}</li>`).join("")}</ul></section>
+    <section class="course-lesson-section course-concept">
+      <p class="course-kicker">Grammatik</p>
+      <h3>${escapeHtml(module.grammarTitles?.[0] || "Grammatik im Satz")}</h3>
+      ${conceptParagraphs.map(paragraph => `<p>${escapeHtml(paragraph)}</p>`).join("")}
+      <div class="course-rule"><strong>Merkregel:</strong> ${escapeHtml(module.concept.rule)}</div>
+      <div class="course-example"><strong lang="la">${escapeHtml(example.latin)}</strong>${example.german ? `<span>${escapeHtml(example.german)}</span>` : ""}</div>
+      <p class="course-mistake"><strong>Typischer Fehler:</strong> ${escapeHtml(module.concept.commonMistake)}</p>
+      ${grammarLinks.length ? `<nav class="course-grammar-links" aria-label="Passende Grammatik">${grammarLinks.map(item => `<button class="course-text-link" data-grammar-section="${item.index}" type="button">${escapeHtml(item.title)} <span aria-hidden="true">→</span></button>`).join("")}</nav>` : ""}
+    </section>
+    <details class="course-challenge"><summary>Zusatzaufgabe: ${escapeHtml(module.challenge.title)}</summary><p>${escapeHtml(module.challenge.prompt)}</p><small>Freiwillig; beeinflusst die Freigabe des nächsten Pakets nicht.</small></details>
     <section class="course-pack-section">
       <div class="course-pack-heading"><div><p class="course-kicker">Wortschatz</p><h3>Paket ${state.coursePackIndex + 1} von ${info.packs.length}</h3></div><p>${pack.length} neue Wörter · ${currentProgress.bestScore || 0} % Bestwert</p></div>
       <div class="course-pack-list" role="group" aria-label="Wortpaket auswählen">${info.packs.map((_, index) => `<button class="course-pack-button ${index === state.coursePackIndex ? "active" : ""} ${packProgress(module.id, index).passed ? "passed" : ""}" data-course-pack="${index}" type="button" aria-label="Paket ${index + 1}${packProgress(module.id, index).passed ? ", bestanden" : ""}">${packProgress(module.id, index).passed ? "✓" : index + 1}</button>`).join("")}</div>
       <div class="course-vocab-preview">${pack.map(entry => `<article class="course-vocab-item"><strong lang="la">${escapeHtml(entry.latein)}</strong><span>${escapeHtml(entry.deutsch)}</span><small>${escapeHtml(entry.grammatik || `Lektion ${entry.lektion}`)}</small></article>`).join("")}</div>
     </section>
-    <section class="card course-start-row"><p>Die Runde fragt jedes neue Wort aktiv ab, mischt frühere Wörter ein und prüft die Grammatik. Fehler kehren nach zwei Aufgaben zurück.</p><button class="button" data-course-start type="button">${currentProgress.passed ? "Paket wiederholen" : "Training starten"}</button></section>
+    <section class="course-start-row"><p>Fehler werden nach zwei weiteren Aufgaben erneut abgefragt.</p><button class="button" data-course-start type="button">${currentProgress.passed ? "Paket wiederholen" : "Training starten"}</button></section>
   </div>`;
 }
 
@@ -588,9 +563,9 @@ function renderCourseSummary() {
   const breakdown = result.skillScores || {};
   const labels = { vocabulary: "Bedeutungen", forms: "Formen", grammar: "Grammatik", reading: "Sätze" };
   app.innerHTML = `<div class="course-summary ${result.passed ? "passed" : ""}">
-    <section class="card course-summary-hero"><div class="course-summary-emblem">${result.passed ? "✓" : "↻"}</div><p class="course-kicker">${escapeHtml(module.title)} · Paket ${state.coursePackIndex + 1}</p><h2>${result.passed ? "Paket bestanden" : "Noch eine Reparaturrunde"}</h2><p>${result.passed ? "Stark: Du hast die Mindestquote erreicht und alle unsicheren Antworten anschließend selbst gelöst." : `Du brauchst ${result.requiredScore || courseRequiredScore()} % im ersten Versuch, mindestens ${result.minimumSkillScore || 60} % je Bereich und jede Korrektur.`}</p><div class="course-score">${result.score || 0} %</div>${result.initialMistakes ? `<small class="meta">${result.correctedMistakes}/${result.initialMistakes} unsichere Antworten korrigiert</small>` : ""}</section>
-    <section class="card"><div class="course-breakdown">${Object.entries(labels).map(([skill, label]) => `<div><strong>${breakdown[skill]?.score ?? "–"}${Number.isFinite(breakdown[skill]?.score) ? " %" : ""}</strong><span>${label}</span></div>`).join("")}</div></section>
-    <div class="course-summary-actions"><button class="button secondary" data-course-map type="button">Kurskarte</button><button class="button secondary" data-course-retry type="button">Paket wiederholen</button>${result.passed && state.coursePackIndex < info.packs.length - 1 ? `<button class="button" data-course-next-pack="${nextPackIndex}" type="button">Nächstes Paket</button>` : `<button class="button" data-course-module-return type="button">Zum Modul</button>`}</div>
+    <header class="course-summary-hero"><p class="course-kicker">${escapeHtml(module.title)} · Paket ${state.coursePackIndex + 1}</p><h2>${result.passed ? "Paket bestanden" : "Paket wiederholen"}</h2><p>${result.passed ? "Alle Kriterien für dieses Paket sind erfüllt." : `Erforderlich sind ${result.requiredScore || courseRequiredScore()} % im ersten Versuch, mindestens ${result.minimumSkillScore || 60} % je Bereich und jede Korrektur.`}</p><div class="course-score">${result.score || 0} %</div>${result.initialMistakes ? `<small class="meta">${result.correctedMistakes}/${result.initialMistakes} unsichere Antworten korrigiert</small>` : ""}</header>
+    <dl class="course-breakdown">${Object.entries(labels).map(([skill, label]) => `<div><dt>${label}</dt><dd>${breakdown[skill]?.score ?? "–"}${Number.isFinite(breakdown[skill]?.score) ? " %" : ""}</dd></div>`).join("")}</dl>
+    <div class="course-summary-actions"><button class="button secondary" data-course-map type="button">Kursübersicht</button><button class="button secondary" data-course-retry type="button">Paket wiederholen</button>${result.passed && state.coursePackIndex < info.packs.length - 1 ? `<button class="button" data-course-next-pack="${nextPackIndex}" type="button">Nächstes Paket</button>` : `<button class="button" data-course-module-return type="button">Zum Modul</button>`}</div>
   </div>`;
 }
 
@@ -618,7 +593,8 @@ async function unlockCourse(code) {
     state.courseAccessError = error instanceof Error ? error.message : "Der Code konnte nicht geprüft werden.";
   } finally {
     state.courseAccessBusy = false;
-    render();
+    if (state.courseAccessGranted) renderAtTop();
+    else render();
   }
 }
 
@@ -1030,7 +1006,8 @@ function showToast(message) { toast.textContent = message; toast.classList.add("
 
 function render() {
   renderNav();
-  if (state.route === "lernen") renderLearn();
+  if (state.route === "kurs") renderCourse();
+  if (state.route === "vokabeln") renderVocabularyBrowser();
   if (state.route === "ueben") renderPractice();
   if (state.route === "uebersetzen") renderTranslate();
   if (state.route === "grammatik") renderGrammar();
@@ -1040,13 +1017,12 @@ function render() {
 document.addEventListener("click", event => {
   const target = event.target.closest("button"); if (!target) return;
   if (target.dataset.route) navigate(target.dataset.route);
-  if (target.dataset.learnView) { state.learnView = target.dataset.learnView; state.search = ""; render(); }
   if (target.hasAttribute("data-course-continue")) {
     const recommended = recommendedCourseTarget();
     state.courseModuleId = recommended.module.id;
     state.coursePackIndex = recommended.packIndex;
     state.coursePhase = "module";
-    render();
+    renderAtTop();
   }
   if (target.hasAttribute("data-course-lock")) lockCourse();
   if (target.dataset.courseModule) {
@@ -1055,10 +1031,10 @@ document.addEventListener("click", event => {
       state.courseModuleId = module.id;
       state.coursePackIndex = moduleCourseInfo(module).status.nextPackIndex ?? 0;
       state.coursePhase = "module";
-      render();
+      renderAtTop();
     }
   }
-  if (target.hasAttribute("data-course-map")) { state.coursePhase = "map"; render(); }
+  if (target.hasAttribute("data-course-map")) { state.coursePhase = "map"; renderAtTop(); }
   if (target.dataset.coursePack != null) { state.coursePackIndex = Number(target.dataset.coursePack); state.coursePhase = "module"; render(); }
   if (target.hasAttribute("data-course-start") || target.hasAttribute("data-course-retry")) startCourseRound();
   if (target.dataset.courseChoice != null && !state.courseAnswerRecorded) recordCourseAnswer(target.dataset.courseChoice);
@@ -1069,8 +1045,8 @@ document.addEventListener("click", event => {
     announce("Hinweis eingeblendet.");
   }
   if (target.hasAttribute("data-course-next")) nextCourseQuestion();
-  if (target.dataset.courseNextPack != null) { state.coursePackIndex = Number(target.dataset.courseNextPack); state.coursePhase = "module"; render(); }
-  if (target.hasAttribute("data-course-module-return")) { state.coursePhase = "module"; render(); }
+  if (target.dataset.courseNextPack != null) { state.coursePackIndex = Number(target.dataset.courseNextPack); state.coursePhase = "module"; renderAtTop(); }
+  if (target.hasAttribute("data-course-module-return")) { state.coursePhase = "module"; renderAtTop(); }
   if (target.dataset.lessonCard) { state.lesson = target.dataset.lessonCard; state.search = ""; render(); }
   if (target.dataset.favorite) {
     const entry = state.vocabulary.find(v => stableId(v) === target.dataset.favorite); const p = progressFor(entry);
@@ -1246,7 +1222,9 @@ async function init() {
       state.courseAccessGranted = Boolean(state.courseAccessRecord);
       if (!state.courseAccessGranted) clearCourseAccessSession();
     }
-    const hash = location.hash.slice(1); if (NAV.some(n => n.id === hash)) state.route = hash;
+    const hash = location.hash.slice(1);
+    if (hash === "lernen") state.route = "kurs";
+    else if (ROUTES.has(hash)) state.route = hash;
     startPractice(); render();
   } catch (error) {
     app.innerHTML = `<div class="card empty"><h2>Inhalte fehlen</h2><p>${escapeHtml(error.message)}</p><p>Starte die Seite über einen lokalen Webserver.</p></div>`;

@@ -43,7 +43,17 @@ test("course accessibility and mobile feedback are present", () => {
   assert.match(app, /lang="la"/);
   assert.match(styles, /\.course-choice\.correct[^}]*background:/s);
   assert.match(styles, /\.course-choice\.wrong[^}]*background:/s);
-  assert.match(styles, /@media \(max-width: 700px\)[\s\S]*\.course-concept-grid/);
+  assert.match(styles, /@media \(max-width: 700px\)[\s\S]*\.course-overview-actions/);
+});
+
+test("course and vocabulary are separate top-level destinations", () => {
+  const navBlock = app.match(/const NAV = \[([\s\S]*?)\];/)?.[1] || "";
+  const ids = [...navBlock.matchAll(/id: "([^"]+)"/g)].map(match => match[1]);
+  assert.deepEqual(ids, ["kurs", "vokabeln", "ueben", "uebersetzen", "grammatik"]);
+  assert.match(app, /state\.route === "kurs"\) renderCourse\(\)/);
+  assert.match(app, /state\.route === "vokabeln"\) renderVocabularyBrowser\(\)/);
+  assert.doesNotMatch(app, /learnView|learnSwitcher|data-learn-view/);
+  assert.match(app, /data-route="fortschritt"/);
 });
 
 test("course progress and access remain session-bound", () => {
@@ -64,12 +74,21 @@ test("free practice supports an accessible multi-lesson selection", () => {
 });
 
 test("course gate exposes only a clearly labelled PayPal sandbox subscription", () => {
-  assert.match(app, /Monatsabo · Sandbox/);
+  assert.match(app, /Monatszugang mit PayPal/);
   assert.match(app, /paypal-subscription-buttons/);
   assert.match(app, /actions\.subscription\.create/);
   assert.match(app, /plan_id:\s*state\.paymentConfig\.planId/);
-  assert.match(app, /keine Live-Zahlung/);
+  assert.match(app, /Sandbox:<\/strong> Derzeit wird kein echtes Geld abgebucht/);
+  assert.doesNotMatch(app, /Prototyp|Latein verstehen – Schritt für Schritt|Mit PayPal testen/);
+  assert.doesNotMatch(app, /course-gate-hero|course-map-hero|course-chip/);
   assert.doesNotMatch(app, /[\w.+-]+@[\w.-]+\.[a-z]{2,}/i);
+});
+
+test("course pages use a quiet linear structure instead of dashboard cards", () => {
+  assert.match(app, /class="course-outline-list"/);
+  assert.match(app, /class="course-module-list"/);
+  assert.match(app, /class="course-overview"/);
+  assert.match(styles, /\/\* Calm, content-first course layout \*\/[\s\S]*\.course-module\s*\{[\s\S]*?border-radius:\s*0/);
 });
 
 test("grammar reference uses the ordered sequence and related navigation", () => {

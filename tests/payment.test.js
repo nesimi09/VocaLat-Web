@@ -31,16 +31,19 @@ test("committed subscription is 4.99 EUR every month", () => {
   assert.equal(formatMonthlyPrice(committedConfig), "4,99 € monatlich");
 });
 
-test("the temporary GitHub Pages sandbox test expires closed", () => {
-  const beforeExpiry = Date.parse(committedConfig.expiresAt) - 1;
-  const afterExpiry = Date.parse(committedConfig.expiresAt) + 1;
-  const validation = validatePaymentConfig(committedConfig, beforeExpiry);
+test("the sandbox stays enabled without an expiry and optional expiry fails closed", () => {
+  const validation = validatePaymentConfig(committedConfig, activeAt);
   assert.equal(validation.valid, true);
   assert.equal(validation.ready, true);
-  assert.equal(isSandboxSubscriptionReady(committedConfig, beforeExpiry), true);
-  assert.equal(isSandboxSubscriptionReady(committedConfig, afterExpiry), false);
-  assert.equal(buildPayPalSdkUrl(committedConfig, afterExpiry), null);
-  assert.equal(paymentConfigStatus(committedConfig, afterExpiry).state, "expired");
+  assert.equal(validation.expired, false);
+  assert.equal(isSandboxSubscriptionReady(committedConfig, activeAt), true);
+
+  const beforeExpiry = Date.parse(readySandboxConfig.expiresAt) - 1;
+  const afterExpiry = Date.parse(readySandboxConfig.expiresAt) + 1;
+  assert.equal(isSandboxSubscriptionReady(readySandboxConfig, beforeExpiry), true);
+  assert.equal(isSandboxSubscriptionReady(readySandboxConfig, afterExpiry), false);
+  assert.equal(buildPayPalSdkUrl(readySandboxConfig, afterExpiry), null);
+  assert.equal(paymentConfigStatus(readySandboxConfig, afterExpiry).state, "expired");
   assert.equal(buildPayPalSdkUrl({ ...readySandboxConfig, environment: "production" }, activeAt), null);
   assert.equal(buildPayPalSdkUrl({ ...readySandboxConfig, planId: "" }, activeAt), null);
 });
@@ -74,7 +77,7 @@ test("the public config contains no email, secret or personal PayPal value", () 
   assert.equal(committedConfig.environment, "sandbox");
   assert.match(committedConfig.clientId, /^[A-Za-z0-9_-]{20,256}$/);
   assert.match(committedConfig.planId, /^P-[A-Z0-9]{10,64}$/);
-  assert.match(committedConfig.expiresAt, /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$/);
+  assert.equal(committedConfig.expiresAt, "");
   assert.doesNotMatch(committedSource, /@|email|secret|password|client[_-]?secret|merchant|payer|customer|webhook/i);
 
   const unsafeConfig = { ...readySandboxConfig, clientSecret: "do-not-commit" };
