@@ -7,6 +7,6 @@
     "test": "node --test tests/*.test.js",
     "test:corpus": "node scripts/evaluate-translation-corpus.mjs",
     "codes:generate": "node scripts/generate-course-codes.mjs",
-    "check": "node --check app.js && node --check course-engine.js && node --check course-access.js && node --check grammar-order.js && node --check payment.js && node --check learning-engine.js && node --check document-analysis.js && node --check morphology.js && node --check ocr.js && node --check service-worker.js && node --check scripts/generate-course-codes.mjs && node --check scripts/evaluate-translation-corpus.mjs && npm test && npm run test:corpus"
+    "check": "node --check app.js && node --check course-engine.js && node --check course-access.js && node --check grammar-practice.js && node --check grammar-order.js && node --check payment.js && node --check learning-engine.js && node --check latin-syntax-translator.js && node --check document-analysis.js && node --check morphology.js && node --check ocr.js && node --check service-worker.js && node --check scripts/generate-course-codes.mjs && node --check scripts/evaluate-translation-corpus.mjs && npm test && npm run test:corpus"
   }
 }

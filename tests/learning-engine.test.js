@@ -233,7 +233,7 @@ test("verified complex passages replace word salad and tolerate a small OCR erro
   assert.doesNotMatch(result.translation, /\[[^\]]+\]|Frage es gibt|die Sitte/);
 });
 
-test("unverified complex prose never appears as a confident word-salad translation", () => {
+test("resolved complex prose is rendered as a sentence without needing translation memory", () => {
   const fallback = [
     { lemma: "puella", forms: ["puella", "puellae"], pos: "n", meanings: ["Mädchen"] },
     { lemma: "amo", forms: ["amo", "amare"], pos: "v", meanings: ["lieben"] },
@@ -246,8 +246,10 @@ test("unverified complex prose never appears as a confident word-salad translati
     ["venit", [{ forms: ["venio"], morphology: { part: "v", mood: "indicative", tense: "present", voice: "active", person: 3, number: "singular" } }]]
   ]);
   const result = analyzeBookText("Cum puella venit, amat.", [], [], null, fallback, morphology);
-  assert.equal(result.translationReliable, false);
-  assert.equal(result.translation, "");
+  assert.equal(result.translationReliable, true);
+  assert.match(result.translation, /^Als .*kommt,/);
+  assert.doesNotMatch(result.translation, / · |\[[^\]]+\]/);
+  assert.equal(result.translationVerified, false);
 });
 
 test("OCR cleanup joins line-break hyphenation without changing paragraphs", () => {

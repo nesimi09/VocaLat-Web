@@ -66,11 +66,16 @@ test("course progress and access remain session-bound", () => {
 
 test("free practice supports an accessible multi-lesson selection", () => {
   assert.match(app, /practiceLessons:\s*"all"/);
+  assert.match(app, /class="lesson-picker-trigger"/);
+  assert.match(app, /aria-expanded=/);
+  assert.match(app, /data-practice-picker-close/);
   assert.match(app, /data-practice-lesson/);
   assert.match(app, /data-practice-select-all/);
   assert.match(app, /data-practice-clear/);
   assert.match(app, /new Set\(selectedPracticeLessons\(\)\)/);
   assert.match(styles, /\.lesson-checkbox-grid/);
+  assert.doesNotMatch(app, /Latein lesen, Deutsch antworten|class="lesson-multiselect"/);
+  assert.doesNotMatch(styles, /lesson-multiselect|content:\s*"⌄"|content:\s*"⌃"/);
 });
 
 test("course gate keeps PayPal and course codes without extra introductory copy", () => {
@@ -86,7 +91,9 @@ test("course gate keeps PayPal and course codes without extra introductory copy"
 });
 
 test("course pages use a quiet linear structure instead of dashboard cards", () => {
-  assert.match(app, /class="course-outline-list"/);
+  assert.match(app, /class="course-benefits"/);
+  assert.match(app, /Das lernst du im Kurs/);
+  assert.doesNotMatch(app, /Kursinhalt|Der Code und der Kursstand werden nicht dauerhaft/);
   assert.match(app, /class="course-module-list"/);
   assert.match(app, /class="course-overview"/);
   assert.match(styles, /\/\* Calm, content-first course layout \*\/[\s\S]*\.course-module\s*\{[\s\S]*?border-radius:\s*0/);
@@ -96,4 +103,18 @@ test("grammar reference uses the ordered sequence and related navigation", () =>
   assert.match(app, /orderGrammarSections\(\(await grammarResponse\.json\(\)\)\.abschnitte/);
   assert.match(app, /class="grammar-sequence-nav"/);
   assert.match(app, /Verwandte Formen und Regeln stehen direkt nacheinander/);
+  assert.match(app, /data-grammar-practice/);
+  assert.match(app, /function renderGrammarPractice/);
+  assert.doesNotMatch(app, /id="grammar-search"|Abschnitte suchen/);
+});
+
+test("translation uses the complete local vocabulary without a lesson gate", () => {
+  assert.doesNotMatch(app, /Vokabelstand|translation-lesson|Foto oder Screenshot · die Übersetzung startet automatisch/);
+  assert.match(app, /analyzeBookText\(state\.translationText, state\.vocabulary, state\.grammar, null/);
+});
+
+test("session-only implementation details are not shown to learners", () => {
+  assert.doesNotMatch(app, /Dieser Fortschritt, deine Favoriten und der Kursstand gelten nur für die aktuelle Browser-Sitzung/);
+  assert.doesNotMatch(app, /Kurspakete|\bPaket(?:e|en)?\b/);
+  assert.match(app, /Lerneinheiten/);
 });

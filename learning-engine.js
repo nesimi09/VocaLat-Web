@@ -1,3 +1,5 @@
+import { translateLatinSyntax } from "./latin-syntax-translator.js";
+
 const ANSWER_SEPARATORS = /[,;/]/;
 const LATIN_WORD_PATTERN = /[\p{L}\p{M}]+(?:[’'][\p{L}\p{M}]+)?/gu;
 
@@ -91,7 +93,8 @@ export function analyzeBookText(text, vocabulary, grammarSections, maxLesson = n
     ...allowedVocabulary.map(bookDescriptor),
     ...fallbackEntries.map(fallbackDescriptor)
   ];
-  const contextualProperNames = morphologyProperNameDescriptors(sourceTokens, morphologyAnalyses);
+  const lexicalIndex = buildVocabularyIndex(descriptors);
+  const contextualProperNames = morphologyProperNameDescriptors(sourceTokens, morphologyAnalyses, lexicalIndex);
   const baseIndex = buildVocabularyIndex([...descriptors, ...contextualProperNames]);
   const unresolvedCapitalizedTokens = sourceTokens.filter(token => !baseIndex.words.has(token.normalized) && !baseIndex.forms.has(token.normalized));
   const properNames = properNameDescriptors(unresolvedCapitalizedTokens);
@@ -115,15 +118,16 @@ export function analyzeBookText(text, vocabulary, grammarSections, maxLesson = n
     ? passageMatches.map(match => ({ text: match.german, verified: true, reliable: true }))
     : lineAnalyses.map(line => {
       const verified = findTranslationMemoryMatch(line.source, translationMemory);
-      const reliable = Boolean(verified) || isReliableHeuristicLine(line.matches);
-      return { text: verified?.german || translateLatinLine(line.matches), verified: Boolean(verified), reliable };
+      const syntax = verified ? null : translateLatinSyntax(line.matches);
+      const reliable = Boolean(verified) || Boolean(syntax?.reliable);
+      return { text: verified?.german || syntax?.text || translateLatinLine(line.matches), verified: Boolean(verified), reliable, syntax };
     });
   const translationReliable = translatedLines.length > 0 && translatedLines.every(line => line.reliable);
 
   return {
     text: String(text).trim(),
     correctedText: lineAnalyses.map(line => line.matches.map(match => match.canonicalForm || match.token).join(" ")).join("\n"),
-    translation: translationReliable ? translatedLines.map(line => line.text).join("\n") : "",
+    translation: translatedLines.map(line => line.text).filter(Boolean).join("\n"),
     translationReliable,
     verifiedLines: translatedLines.filter(line => line.verified).length,
     translationVerified: translatedLines.length > 0 && translatedLines.every(line => line.verified),
@@ -136,19 +140,6 @@ export function analyzeBookText(text, vocabulary, grammarSections, maxLesson = n
     draft: matches.map(match => RESOLVED_STATUSES.has(match.status) ? match.entries[0].deutsch : `[${match.token}]`).join(" · "),
     grammar
   };
-}
-
-function isReliableHeuristicLine(matches) {
-  if (!matches.length || matches.some(match => !RESOLVED_STATUSES.has(match.status) || !match.entries.length)) return false;
-  const ppaIndex = matches.findIndex(match => hasMorphology(match, morphology => morphology.part === "ppa" && morphology.case?.includes("ablative") && morphology.number === "plural"));
-  const ablativeSubject = matches.findIndex((match, index) => index !== ppaIndex && hasMorphology(match, morphology => morphology.part === "n" && morphology.case?.includes("ablative") && morphology.number === "plural"));
-  if (ppaIndex >= 0 && ablativeSubject >= 0) return matches.length <= 8;
-
-  const clauseMarkers = new Set(["cum", "dum", "ne", "nisi", "postquam", "quam", "quod", "qui", "quia", "si", "ut"]);
-  if (matches.some(match => clauseMarkers.has(match.normalized))) return false;
-  const finiteVerbs = matches.filter(match => hasMorphology(match, morphology => morphology.part === "v" && morphology.mood === "indicative" && morphology.person));
-  const nominativeSubjects = matches.filter(match => hasMorphology(match, morphology => morphology.part === "n" && morphology.case?.includes("nominative")));
-  return matches.length <= 6 && finiteVerbs.length === 1 && nominativeSubjects.length === 1;
 }
 
 function findTranslationMemoryMatch(source, entries) {
@@ -315,9 +306,11 @@ function preferContextualCase(records, tokens, position, analyses) {
   const next = tokens[position + 1];
   const accusativePrepositions = new Set(["ad", "ante", "apud", "contra", "inter", "ob", "per", "post", "propter", "trans"]);
   const ablativePrepositions = new Set(["ab", "cum", "de", "ex", "pro", "sine"]);
+  const followingFiniteVerbs = tokens.slice(position + 1).filter(token => (analyses.get(token.normalized) || []).some(analysis => analysis.morphology?.part === "v" && analysis.morphology.mood && analysis.morphology.person)).length;
+  const clauseOpeningCum = previous?.normalized === "cum" && followingFiniteVerbs >= 2;
   let preferredCase = ["salve", "salvete"].includes(previous?.normalized) ? "vocative"
     : accusativePrepositions.has(previous?.normalized) ? "accusative"
-    : ablativePrepositions.has(previous?.normalized) ? "ablative"
+    : ablativePrepositions.has(previous?.normalized) && !clauseOpeningCum ? "ablative"
       : null;
 
   if (!preferredCase && previous && next) {
@@ -395,10 +388,11 @@ function properNameDescriptors(tokens) {
   return [...descriptors.values()];
 }
 
-function morphologyProperNameDescriptors(tokens, analyses) {
+function morphologyProperNameDescriptors(tokens, analyses, lexicalIndex = null) {
   const descriptors = new Map();
   for (const token of tokens) {
     if (!/^\p{Lu}/u.test(token.raw)) continue;
+    if (lexicalIndex?.words.has(token.normalized) || lexicalIndex?.forms.has(token.normalized)) continue;
     for (const analysis of analyses.get(token.normalized) || []) {
       const lemma = String(analysis.citation || "").match(/^([\p{L}\p{M}]+)/u)?.[1];
       if (!lemma || !/^\p{Lu}/u.test(lemma)) continue;
@@ -496,12 +490,14 @@ function longestPhraseMatch(tokens, start, phrases) {
 function classifyExactMatch(token, entries, length, formRecords = [], canonicalForm = null) {
   const senses = preferredEntries(entries);
   const status = senses.length > 1 ? "ambiguous" : statusForSource(senses[0]?.source, false);
+  const selectedRecords = preferredRecords(formRecords, senses);
   return {
     token,
     normalized: normalizeLatinWord(token),
     status,
     entries: senses,
-    morphology: preferredRecords(formRecords, senses).map(record => record.morphology).filter(Boolean),
+    morphology: selectedRecords.map(record => record.morphology).filter(Boolean),
+    morphologyCandidates: selectedRecords.map(record => ({ entry: record.entry, morphology: record.morphology })).filter(record => record.morphology),
     canonicalForm: displayCanonicalForm(token, canonicalForm),
     length
   };
@@ -512,7 +508,16 @@ function classifyFormMatch(token, records, canonicalForm, forcedStatus = null) {
   const selectedRecords = preferredRecords(records, entries);
   const source = entries[0]?.source;
   const status = forcedStatus || statusForSource(source, true);
-  return { token, normalized: normalizeLatinWord(token), status, entries, morphology: selectedRecords.map(record => record.morphology).filter(Boolean), canonicalForm: displayCanonicalForm(token, canonicalForm), length: 1 };
+  return {
+    token,
+    normalized: normalizeLatinWord(token),
+    status,
+    entries,
+    morphology: selectedRecords.map(record => record.morphology).filter(Boolean),
+    morphologyCandidates: selectedRecords.map(record => ({ entry: record.entry, morphology: record.morphology })).filter(record => record.morphology),
+    canonicalForm: displayCanonicalForm(token, canonicalForm),
+    length: 1
+  };
 }
 
 function displayCanonicalForm(original, canonical) {
@@ -620,6 +625,7 @@ function inferPartOfSpeech(headword = "", grammar = "") {
   if (/Konj\./i.test(grammar)) return "conj";
   if (/Präp\./i.test(grammar)) return "prep";
   if (/Pron\./i.test(grammar)) return "pron";
+  if (/^(?:unus|duo|tres|quattuor|quinque|sex|septem|octo|novem|decem)$/i.test(normalizeLatinWord(first))) return "num";
   if (/\b[fm]\.|\bn\./i.test(grammar)) return "n";
   if (/(?:are|ere|ire)$/i.test(normalizeLatinWord(first))) return "v";
   if (/-(?:a|um)|\b(?:a|um)\b/i.test(grammar) || /(?:us|er|is)$/i.test(first) && /(?:a|um)/i.test(grammar)) return "adj";

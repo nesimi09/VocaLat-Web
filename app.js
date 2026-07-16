@@ -3,6 +3,7 @@ import { buildCourseRound, calculateCourseResult, moduleSessionStatus, nextRetry
 import { createCourseAccessSession, verifyCourseAccessCode, verifyCourseAccessSession } from "./course-access.js";
 import { buildPayPalSdkUrl, formatMonthlyPrice, paymentConfigStatus } from "./payment.js";
 import { grammarCategory, orderGrammarSections } from "./grammar-order.js";
+import { buildGrammarPractice } from "./grammar-practice.js";
 import { extractLatinDocument } from "./document-analysis.js";
 import { analyzeLatinMorphology, prepareMorphology } from "./morphology.js";
 import { recognizeLatinText, validateOcrImage } from "./ocr.js";
@@ -42,7 +43,9 @@ const state = {
   practiceLessons: "all", practicePickerOpen: false, mode: "typed", practiceSet: [], questionIndex: 0,
   practiceAnswered: 0, practiceCorrect: 0, practiceComplete: false,
   revealed: false, selectedChoice: null, feedback: null, answerRecorded: false, typedAnswer: "",
-  translationLesson: "all", translationText: "", translationRawText: "", translationImage: null, translationImageUrl: null,
+  grammarPracticeCategory: null, grammarPracticeRound: [], grammarPracticeIndex: 0,
+  grammarPracticeSelected: null, grammarPracticeRecorded: false, grammarPracticeCorrect: 0, grammarPracticeComplete: false,
+  translationText: "", translationRawText: "", translationImage: null, translationImageUrl: null,
   translationBusy: false, translationProgress: 0, translationStatus: "", translationError: "",
   translationConfidence: null, translationAnalysis: null,
   translationMorphology: new Map(),
@@ -227,12 +230,18 @@ function renderCourseGate() {
           ${state.courseAccessError ? `<div class="inline-alert error" role="alert">${escapeHtml(state.courseAccessError)}</div>` : ""}
           <button class="button" type="submit" ${state.courseAccessBusy ? "disabled" : ""}>${state.courseAccessBusy ? "Code wird geprüft …" : "Mit Code freischalten"}</button>
         </form>
-        <small class="course-code-note">Der Code und der Kursstand werden nicht dauerhaft im Browser gespeichert.</small>
       </details>
     </section>
-    <section class="course-outline" aria-labelledby="course-outline-title">
-      <div class="section-heading"><h2 id="course-outline-title">Kursinhalt</h2></div>
-      <ol class="course-outline-list">${state.course.modules.map((module, index) => `<li><span>${index + 1}</span><strong>${escapeHtml(module.title)}</strong><small>Lektion ${lessonRange(module)}</small></li>`).join("")}</ol>
+    <section class="course-benefits" aria-labelledby="course-benefits-title">
+      <h2 id="course-benefits-title">Das lernst du im Kurs</h2>
+      <p>Der Kurs verbindet die Vokabeln aus dem Schulbuch mit der Grammatik, die du beim Übersetzen wirklich brauchst.</p>
+      <ul>
+        <li>Erklärungen in der Reihenfolge des Buches</li>
+        <li>Grammatik direkt nach jeder Erklärung üben</li>
+        <li>Fehler gezielt wiederholen</li>
+        <li>Tests über eine oder mehrere Lektionen</li>
+      </ul>
+      <p>So kannst du dich auf Hausaufgaben und Klassenarbeiten vorbereiten, ohne dir das Material selbst zusammensuchen zu müssen.</p>
     </section>
   </div>`;
   if (paymentStatus.ready && state.paymentState !== "error") requestAnimationFrame(() => { void mountPayPalSubscription(); });
@@ -356,10 +365,10 @@ function renderCourseMap() {
   app.innerHTML = `<div class="course-map">
     <header class="course-overview">
       <h2>Kursübersicht</h2>
-      <p class="course-overview-meta"><strong>${passedPacks} von ${totalPacks}</strong> Paketen in dieser Sitzung abgeschlossen</p>
+      <p class="course-overview-meta"><strong>${passedPacks} von ${totalPacks}</strong> Lerneinheiten abgeschlossen</p>
       <div class="progress-track" role="progressbar" aria-label="Kursfortschritt" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${percent}"><div class="progress-fill" style="width:${percent}%"></div></div>
       <div class="course-overview-actions">
-        <button class="button" data-course-continue type="button">${passedPacks ? "Weiterlernen" : "Erstes Paket starten"}</button>
+        <button class="button" data-course-continue type="button">${passedPacks ? "Weiterlernen" : "Erste Lerneinheit starten"}</button>
         <div><button class="text-button" data-route="fortschritt" type="button">Sitzungsstand</button><button class="text-button" data-course-lock type="button">Zugang beenden</button></div>
       </div>
     </header>
@@ -372,7 +381,7 @@ function renderCourseMap() {
         const statusLabel = statusKey === "complete" ? "Bestanden" : statusKey === "in-progress" ? "Begonnen" : "Neu";
         return `<li><button class="course-module ${statusClass} ${isRecommended ? "recommended" : ""}" data-course-module="${escapeHtml(module.id)}" type="button" ${isRecommended ? 'aria-current="step"' : ""}>
           <span class="course-module-marker">${statusKey === "complete" ? "✓" : index + 1}</span>
-          <span class="course-module-copy"><h3>${escapeHtml(module.title)}</h3><small>Lektion ${lessonRange(module)} · ${total} ${total === 1 ? "Paket" : "Pakete"}</small></span>
+          <span class="course-module-copy"><h3>${escapeHtml(module.title)}</h3><small>Lektion ${lessonRange(module)} · ${total} ${total === 1 ? "Lerneinheit" : "Lerneinheiten"}</small></span>
           <span class="course-module-progress"><strong>${done}/${total}</strong><small>${statusLabel}</small></span>
         </button></li>`;
       }).join("")}</ol>
@@ -416,13 +425,13 @@ function renderCourseModule() {
       <p class="course-mistake"><strong>Typischer Fehler:</strong> ${escapeHtml(module.concept.commonMistake)}</p>
       ${grammarLinks.length ? `<nav class="course-grammar-links" aria-label="Passende Grammatik">${grammarLinks.map(item => `<button class="course-text-link" data-grammar-section="${item.index}" type="button">${escapeHtml(item.title)} <span aria-hidden="true">→</span></button>`).join("")}</nav>` : ""}
     </section>
-    <details class="course-challenge"><summary>Zusatzaufgabe: ${escapeHtml(module.challenge.title)}</summary><p>${escapeHtml(module.challenge.prompt)}</p><small>Freiwillig; beeinflusst die Freigabe des nächsten Pakets nicht.</small></details>
+    <details class="course-challenge"><summary>Zusatzaufgabe: ${escapeHtml(module.challenge.title)}</summary><p>${escapeHtml(module.challenge.prompt)}</p><small>Freiwillig; beeinflusst die nächste Lerneinheit nicht.</small></details>
     <section class="course-pack-section">
-      <div class="course-pack-heading"><div><p class="course-kicker">Wortschatz</p><h3>Paket ${state.coursePackIndex + 1} von ${info.packs.length}</h3></div><p>${pack.length} neue Wörter · ${currentProgress.bestScore || 0} % Bestwert</p></div>
-      <div class="course-pack-list" role="group" aria-label="Wortpaket auswählen">${info.packs.map((_, index) => `<button class="course-pack-button ${index === state.coursePackIndex ? "active" : ""} ${packProgress(module.id, index).passed ? "passed" : ""}" data-course-pack="${index}" type="button" aria-label="Paket ${index + 1}${packProgress(module.id, index).passed ? ", bestanden" : ""}">${packProgress(module.id, index).passed ? "✓" : index + 1}</button>`).join("")}</div>
+      <div class="course-pack-heading"><div><p class="course-kicker">Wortschatz</p><h3>Lerneinheit ${state.coursePackIndex + 1} von ${info.packs.length}</h3></div><p>${pack.length} neue Wörter · ${currentProgress.bestScore || 0} % Bestwert</p></div>
+      <div class="course-pack-list" role="group" aria-label="Lerneinheit auswählen">${info.packs.map((_, index) => `<button class="course-pack-button ${index === state.coursePackIndex ? "active" : ""} ${packProgress(module.id, index).passed ? "passed" : ""}" data-course-pack="${index}" type="button" aria-label="Lerneinheit ${index + 1}${packProgress(module.id, index).passed ? ", bestanden" : ""}">${packProgress(module.id, index).passed ? "✓" : index + 1}</button>`).join("")}</div>
       <div class="course-vocab-preview">${pack.map(entry => `<article class="course-vocab-item"><strong lang="la">${escapeHtml(entry.latein)}</strong><span>${escapeHtml(entry.deutsch)}</span><small>${escapeHtml(entry.grammatik || `Lektion ${entry.lektion}`)}</small></article>`).join("")}</div>
     </section>
-    <section class="course-start-row"><p>Fehler werden nach zwei weiteren Aufgaben erneut abgefragt.</p><button class="button" data-course-start type="button">${currentProgress.passed ? "Paket wiederholen" : "Training starten"}</button></section>
+    <section class="course-start-row"><p>Fehler werden nach zwei weiteren Aufgaben erneut abgefragt.</p><button class="button" data-course-start type="button">${currentProgress.passed ? "Lerneinheit wiederholen" : "Training starten"}</button></section>
   </div>`;
 }
 
@@ -486,7 +495,7 @@ function renderCourseQuiz() {
   const feedback = state.courseAnswerRecorded ? `<div class="course-feedback ${state.courseFeedback.correct ? "correct" : "wrong"}" role="status"><strong>${state.courseFeedback.correct ? state.courseHintUsed ? "✓ Richtig – mit Hinweis" : "✓ Richtig" : `✕ Richtig ist: ${escapeHtml(question.answer)}`}</strong><p>${escapeHtml(question.explanation)}</p>${state.courseFeedback.retryScheduled ? `<small>Diese Aufgabe kommt nach zwei anderen Fragen erneut.</small>` : ""}${state.courseHintUsed ? `<small>Mit Hinweis gelöst – für einen sicheren Abruf folgt eine Wiederholung.</small>` : ""}</div><div class="course-answer-actions"><button class="button" data-course-next type="button">${state.courseQuestionIndex + 1 >= state.courseRound.length ? "Auswertung" : "Weiter"}</button></div>` : "";
 
   app.innerHTML = `<div class="course-quiz">
-    <section class="card course-quiz-header"><div class="course-quiz-meta"><span>${escapeHtml(module.title)} · Paket ${state.coursePackIndex + 1}</span><span>${firstAttemptCount}/${state.courseBaseQuestionCount}${retryLabel}</span></div><div class="progress-track" role="progressbar" aria-label="Kursfortschritt" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${progress}"><div class="progress-fill" style="width:${progress}%"></div></div></section>
+    <section class="card course-quiz-header"><div class="course-quiz-meta"><span>${escapeHtml(module.title)} · Lerneinheit ${state.coursePackIndex + 1}</span><span>${firstAttemptCount}/${state.courseBaseQuestionCount}${retryLabel}</span></div><div class="progress-track" role="progressbar" aria-label="Kursfortschritt" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${progress}"><div class="progress-fill" style="width:${progress}%"></div></div></section>
     <section class="card course-question-card" id="course-question" tabindex="-1">
       <span class="course-skill-tag">${escapeHtml(skillLabels[question.skill] || "Training")}${retryLabel}</span>
       <h2 ${question.promptLanguage === "la" ? 'lang="la"' : ""}>${escapeHtml(question.prompt)}</h2>
@@ -543,7 +552,7 @@ function finishCourseRound() {
   state.courseResult = result;
   state.coursePhase = "summary";
   render();
-  announce(result.passed ? "Paket bestanden." : "Paket noch nicht bestanden.");
+  announce(result.passed ? "Lerneinheit bestanden." : "Lerneinheit noch nicht bestanden.");
 }
 
 function renderCourseSummary() {
@@ -554,9 +563,9 @@ function renderCourseSummary() {
   const breakdown = result.skillScores || {};
   const labels = { vocabulary: "Bedeutungen", forms: "Formen", grammar: "Grammatik", reading: "Sätze" };
   app.innerHTML = `<div class="course-summary ${result.passed ? "passed" : ""}">
-    <header class="course-summary-hero"><p class="course-kicker">${escapeHtml(module.title)} · Paket ${state.coursePackIndex + 1}</p><h2>${result.passed ? "Paket bestanden" : "Paket wiederholen"}</h2><p>${result.passed ? "Alle Kriterien für dieses Paket sind erfüllt." : `Erforderlich sind ${result.requiredScore || courseRequiredScore()} % im ersten Versuch, mindestens ${result.minimumSkillScore || 60} % je Bereich und jede Korrektur.`}</p><div class="course-score">${result.score || 0} %</div>${result.initialMistakes ? `<small class="meta">${result.correctedMistakes}/${result.initialMistakes} unsichere Antworten korrigiert</small>` : ""}</header>
+    <header class="course-summary-hero"><p class="course-kicker">${escapeHtml(module.title)} · Lerneinheit ${state.coursePackIndex + 1}</p><h2>${result.passed ? "Lerneinheit bestanden" : "Lerneinheit wiederholen"}</h2><p>${result.passed ? "Alle Aufgaben dieser Lerneinheit sind geschafft." : `Erforderlich sind ${result.requiredScore || courseRequiredScore()} % im ersten Versuch, mindestens ${result.minimumSkillScore || 60} % je Bereich und jede Korrektur.`}</p><div class="course-score">${result.score || 0} %</div>${result.initialMistakes ? `<small class="meta">${result.correctedMistakes}/${result.initialMistakes} unsichere Antworten korrigiert</small>` : ""}</header>
     <dl class="course-breakdown">${Object.entries(labels).map(([skill, label]) => `<div><dt>${label}</dt><dd>${breakdown[skill]?.score ?? "–"}${Number.isFinite(breakdown[skill]?.score) ? " %" : ""}</dd></div>`).join("")}</dl>
-    <div class="course-summary-actions"><button class="button secondary" data-course-map type="button">Kursübersicht</button><button class="button secondary" data-course-retry type="button">Paket wiederholen</button>${result.passed && state.coursePackIndex < info.packs.length - 1 ? `<button class="button" data-course-next-pack="${nextPackIndex}" type="button">Nächstes Paket</button>` : `<button class="button" data-course-module-return type="button">Zum Modul</button>`}</div>
+    <div class="course-summary-actions"><button class="button secondary" data-course-map type="button">Kursübersicht</button><button class="button secondary" data-course-retry type="button">Lerneinheit wiederholen</button>${result.passed && state.coursePackIndex < info.packs.length - 1 ? `<button class="button" data-course-next-pack="${nextPackIndex}" type="button">Nächste Lerneinheit</button>` : `<button class="button" data-course-module-return type="button">Zum Modul</button>`}</div>
   </div>`;
 }
 
@@ -629,13 +638,13 @@ function renderPractice() {
   const availableLessons = lessons();
   const selectedLessons = new Set(selectedPracticeLessons());
   const selectionLabel = state.practiceLessons === "all"
-    ? `Alle ${availableLessons.length} Lektionen`
+    ? "Alle Lektionen"
     : selectedLessons.size === 1
       ? `1 Lektion ausgewählt`
       : `${selectedLessons.size} Lektionen ausgewählt`;
   const progressCard = entry ? `<section class="card"><div class="card-top"><strong>${state.practiceComplete ? "Test abgeschlossen" : `Frage ${state.questionIndex + 1} von ${state.practiceSet.length}`}</strong><span class="meta">${state.practiceComplete ? selectionLabel : `Lektion ${entry.lektion}`}</span></div><div class="progress-track" style="margin-top:10px" role="progressbar" aria-label="Testfortschritt" aria-valuemin="0" aria-valuemax="${state.practiceSet.length}" aria-valuenow="${state.practiceComplete ? state.practiceSet.length : state.questionIndex}"><div class="progress-fill" style="width:${state.practiceComplete ? 100 : state.questionIndex / state.practiceSet.length * 100}%"></div></div></section>` : `<section class="card"><strong>Wähle mindestens eine Lektion aus.</strong><p class="meta">Du kannst beliebig viele Lektionen für einen gemischten Test kombinieren.</p></section>`;
 
-  app.innerHTML = `<div class="practice-layout"><section class="card control-card"><div><h3>Vokabeltest</h3><p class="meta">Latein lesen, Deutsch antworten</p></div><details class="lesson-multiselect" id="practice-lessons" ${state.practicePickerOpen ? "open" : ""}><summary><span>Lektionen</span><strong>${selectionLabel}</strong></summary><div class="lesson-picker-panel"><div class="lesson-picker-actions"><button class="text-button" data-practice-select-all type="button">Alle auswählen</button><button class="text-button" data-practice-clear type="button">Auswahl löschen</button></div><div class="lesson-checkbox-grid" role="group" aria-label="Lektionen für den Test auswählen">${availableLessons.map(n => { const count = entriesForLesson(n).length; return `<label class="lesson-checkbox"><input type="checkbox" data-practice-lesson value="${n}" aria-label="Lektion ${n}, ${count} Vokabeln" ${selectedLessons.has(String(n)) ? "checked" : ""}><span aria-hidden="true">L${n}</span><small aria-hidden="true">${count}</small></label>`; }).join("")}</div></div></details><div><span class="meta">Modus</span><div class="segments" role="group" aria-label="Testmodus wählen">${[["flashcards","Karte"],["multiple","Auswahl"],["typed","Eingabe"]].map(([id,name]) => `<button class="segment ${state.mode === id ? "active" : ""}" data-mode="${id}" type="button" aria-pressed="${state.mode === id}">${name}</button>`).join("")}</div></div><button class="button secondary" id="shuffle" type="button" ${entry ? "" : "disabled"}>Neu mischen</button></section><div class="practice-stack">${progressCard}${state.practiceComplete ? renderPracticeSummary(selectionLabel) : entry ? renderQuestion(entry) : `<div class="card empty">Keine Testfragen verfügbar.</div>`}</div></div>`;
+  app.innerHTML = `<div class="practice-layout"><section class="card control-card"><h3>Vokabeltest</h3><div class="lesson-picker"><button class="lesson-picker-trigger" data-practice-picker type="button" aria-expanded="${state.practicePickerOpen}" aria-controls="practice-lesson-panel"><span><small>Lektionen</small><strong>${selectionLabel}</strong></span><svg viewBox="0 0 20 20" width="20" height="20" aria-hidden="true"><path d="m6 8 4 4 4-4"/></svg></button><div class="lesson-picker-panel" id="practice-lesson-panel" ${state.practicePickerOpen ? "" : "hidden"}><div class="lesson-picker-actions"><button class="text-button" data-practice-select-all type="button">Alle</button><button class="text-button" data-practice-clear type="button">Keine</button></div><div class="lesson-checkbox-grid" role="group" aria-label="Lektionen für den Test auswählen">${availableLessons.map(n => { const count = entriesForLesson(n).length; return `<label class="lesson-checkbox"><input type="checkbox" data-practice-lesson value="${n}" aria-label="Lektion ${n}, ${count} Vokabeln" ${selectedLessons.has(String(n)) ? "checked" : ""}><span aria-hidden="true">${n}</span><small aria-hidden="true">${count}</small></label>`; }).join("")}</div><button class="button secondary lesson-picker-done" data-practice-picker-close type="button">Fertig</button></div></div><div><span class="meta">Modus</span><div class="segments" role="group" aria-label="Testmodus wählen">${[["flashcards","Karte"],["multiple","Auswahl"],["typed","Eingabe"]].map(([id,name]) => `<button class="segment ${state.mode === id ? "active" : ""}" data-mode="${id}" type="button" aria-pressed="${state.mode === id}">${name}</button>`).join("")}</div></div><button class="button secondary" id="shuffle" type="button" ${entry ? "" : "disabled"}>Neu mischen</button></section><div class="practice-stack">${progressCard}${state.practiceComplete ? renderPracticeSummary(selectionLabel) : entry ? renderQuestion(entry) : `<div class="card empty">Keine Testfragen verfügbar.</div>`}</div></div>`;
 }
 
 function renderPracticeSummary(selectionLabel) {
@@ -694,10 +703,6 @@ function nextQuestion() {
 
 function renderTranslate() {
   setHeader("Übersetzen");
-  const highestLesson = Math.max(0, ...state.vocabulary.map(entry => Number(entry.lektion) || 0));
-  const lessonOptions = Array.from({ length: highestLesson }, (_, index) => index + 1)
-    .map(lesson => `<option value="${lesson}" ${state.translationLesson === String(lesson) ? "selected" : ""}>Bis Lektion ${lesson}</option>`)
-    .join("");
   const preview = state.translationImageUrl
     ? `<figure class="scan-preview compact"><img src="${escapeHtml(state.translationImageUrl)}" alt="Vorschau des ausgewählten lateinischen Textes"><figcaption>${escapeHtml(state.translationImage?.name || "Ausgewähltes Bild")}</figcaption></figure>`
     : "";
@@ -708,13 +713,8 @@ function renderTranslate() {
       <label class="upload-zone ${state.translationBusy ? "busy" : ""}" for="latin-image">
         <span class="upload-icon" aria-hidden="true">▧</span>
         <strong>${state.translationImage ? "Anderes Bild auswählen" : "Bild auswählen"}</strong>
-        <small>Foto oder Screenshot · die Übersetzung startet automatisch</small>
       </label>
       <input class="sr-only" id="latin-image" type="file" accept="image/jpeg,image/png,image/webp" ${state.translationBusy ? "disabled" : ""}>
-      <div class="quick-options">
-        <label for="translation-lesson">Vokabelstand</label>
-        <select class="select" id="translation-lesson" ${state.translationBusy ? "disabled" : ""}><option value="all" ${state.translationLesson === "all" ? "selected" : ""}>Alle Lektionen</option>${lessonOptions}</select>
-      </div>
       ${preview}
       ${ocrStatus}
       <details class="text-review">
@@ -758,10 +758,13 @@ function renderTranslationResults() {
       : `<article class="grammar-suggestion generated"><strong>${escapeHtml(rule.title)}</strong><small>${escapeHtml(rule.reason)}</small><span>Automatisch ergänzt</span></article>`).join("")}</div>`
     : `<p class="meta">Keine zusätzliche Grammatikregel nötig.</p>`;
   const translationLines = analysis.translation.split("\n").filter(Boolean).map(line => `<p>${escapeHtml(line)}</p>`).join("");
+  const translationBadge = analysis.translationVerified
+    ? "Lokal geprüft"
+    : analysis.translationReliable ? "Lokal übersetzt" : "Bitte prüfen";
 
   return `<section class="translation-results" aria-live="polite">
     <section class="card final-translation">
-      <div class="card-top"><h2>${analysis.translationVerified ? "Geprüfte Übersetzung" : analysis.translationReliable ? "Übersetzungsvorschlag" : "Keine sichere Übersetzung"}</h2><span class="coverage-badge">${analysis.translationVerified ? "Lokal geprüft" : `${analysis.coverage} % Vokabeln`}</span></div>
+      <div class="card-top"><h2>Übersetzung</h2><span class="coverage-badge${analysis.translationReliable || analysis.translationVerified ? "" : " needs-review"}">${translationBadge}</span></div>
       <div class="translated-lines">${translationLines || `<p>Keine Übersetzung möglich.</p>`}</div>
       ${analysis.unresolvedWords ? `<small>${analysis.unresolvedWords} ${analysis.unresolvedWords === 1 ? "Stelle konnte" : "Stellen konnten"} nicht sicher aufgelöst werden.</small>` : ""}
     </section>
@@ -899,8 +902,7 @@ async function runBookAnalysis() {
 }
 
 function applyBookAnalysis() {
-  const maxLesson = state.translationLesson === "all" ? null : Number(state.translationLesson);
-  state.translationAnalysis = analyzeBookText(state.translationText, state.vocabulary, state.grammar, maxLesson, [...state.translationGlossary, ...state.fallbackVocabulary], state.translationMorphology, state.translationMemory);
+  state.translationAnalysis = analyzeBookText(state.translationText, state.vocabulary, state.grammar, null, [...state.translationGlossary, ...state.fallbackVocabulary], state.translationMorphology, state.translationMemory);
   if (state.translationAnalysis.correctedText) state.translationText = state.translationAnalysis.correctedText;
 }
 
@@ -936,17 +938,59 @@ function removeTranslationImage() {
   renderTranslate();
 }
 
-function renderGrammar() {
-  setHeader("Grammatik", "Nachschlagen");
-  if (state.detail?.type === "section") return renderGrammarDetail(state.grammar[state.detail.index]);
-  const query = state.search.toLocaleLowerCase("de");
-  const sections = state.grammar.filter(s => !query || `${s.titel} ${s.typ}`.toLocaleLowerCase("de").includes(query));
-  if (state.detail?.type === "category") {
-    const cat = CATEGORIES.find(c => c.id === state.detail.id); const items = sections.map((s, i) => ({ s, i: state.grammar.indexOf(s) })).filter(x => categoryFor(x.s) === cat.id);
-    app.innerHTML = `<div class="detail-header"><button class="back button secondary" data-grammar-back type="button">← Alle Kategorien</button><p class="eyebrow">Didaktische Reihenfolge</p><h2>${escapeHtml(cat.title)}</h2><p class="meta">Verwandte Formen und Regeln stehen direkt nacheinander.</p></div><div class="grid two">${items.map(({s,i}, position) => `<button class="card category-card" data-grammar-section="${i}" type="button"><span class="category-icon grammar-sequence-number">${position + 1}</span><span><h3>${escapeHtml(s.titel)}</h3><small class="meta">${escapeHtml(label(s.typ))}</small></span></button>`).join("") || `<div class="empty card">Keine Treffer.</div>`}</div>`;
+function startGrammarPractice(category = null) {
+  let round = buildGrammarPractice(state.grammar, { category, limit: 10 });
+  if (!round.length && category) {
+    category = null;
+    round = buildGrammarPractice(state.grammar, { limit: 10 });
+  }
+  state.grammarPracticeCategory = category;
+  state.grammarPracticeRound = round;
+  state.grammarPracticeIndex = 0;
+  state.grammarPracticeSelected = null;
+  state.grammarPracticeRecorded = false;
+  state.grammarPracticeCorrect = 0;
+  state.grammarPracticeComplete = false;
+  state.detail = { type: "practice" };
+  renderAtTop();
+}
+
+function renderGrammarPractice() {
+  const round = state.grammarPracticeRound;
+  const category = CATEGORIES.find(item => item.id === state.grammarPracticeCategory);
+  if (!round.length) {
+    app.innerHTML = `<div class="grammar-practice"><button class="text-button" data-grammar-practice-back type="button">← Zur Grammatik</button><div class="card empty">Für diese Auswahl sind noch keine Übungen vorhanden.</div></div>`;
     return;
   }
-  app.innerHTML = `<div class="toolbar"><label class="search-wrap"><span class="sr-only">Grammatik durchsuchen</span><input class="field" id="grammar-search" type="search" placeholder="Abschnitte suchen" value="${escapeHtml(state.search)}"></label></div><div class="grid two">${CATEGORIES.map(cat => { const count = sections.filter(s => categoryFor(s) === cat.id).length; return count ? `<button class="card category-card" data-category="${cat.id}" type="button"><span class="category-icon">${cat.icon}</span><span><h3>${escapeHtml(cat.title)}</h3><small class="meta">${count} Abschnitte</small></span></button>` : ""; }).join("")}</div>`;
+  if (state.grammarPracticeComplete) {
+    const percent = Math.round(state.grammarPracticeCorrect / round.length * 100);
+    app.innerHTML = `<div class="grammar-practice"><button class="text-button" data-grammar-practice-back type="button">← Zur Grammatik</button><section class="card grammar-practice-summary"><span class="practice-summary-mark" aria-hidden="true">${percent >= 80 ? "✓" : "↻"}</span><h2>${percent >= 80 ? "Sicher gelöst" : "Noch einmal üben"}</h2><p>${state.grammarPracticeCorrect} von ${round.length} Aufgaben richtig</p><strong class="practice-summary-score">${percent} %</strong><button class="button" data-grammar-practice-restart type="button">Neue Runde</button></section></div>`;
+    return;
+  }
+
+  const question = round[state.grammarPracticeIndex];
+  const progress = Math.round(state.grammarPracticeIndex / round.length * 100);
+  const feedback = state.grammarPracticeRecorded
+    ? `<div class="grammar-practice-feedback ${state.grammarPracticeSelected === question.answer ? "correct" : "wrong"}" role="status"><strong>${state.grammarPracticeSelected === question.answer ? "Richtig" : `Richtig ist: ${escapeHtml(question.answer)}`}</strong><p>${escapeHtml(question.explanation)}</p></div><button class="button grammar-next" data-grammar-practice-next type="button">${state.grammarPracticeIndex + 1 === round.length ? "Auswertung" : "Weiter"}</button>`
+    : "";
+  app.innerHTML = `<div class="grammar-practice">
+    <button class="text-button" data-grammar-practice-back type="button">← Zur Grammatik</button>
+    <section class="grammar-practice-progress"><div class="card-top"><span>${category ? escapeHtml(category.title) : "Gemischte Grammatik"}</span><strong>${state.grammarPracticeIndex + 1}/${round.length}</strong></div><div class="progress-track" role="progressbar" aria-label="Übungsfortschritt" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${progress}"><div class="progress-fill" style="width:${progress}%"></div></div></section>
+    <section class="card grammar-question-card"><span class="course-skill-tag">${escapeHtml(question.sectionTitle)}</span><h2>${escapeHtml(question.prompt)}</h2><div class="grammar-choice-list">${question.options.map(option => { const optionState = answerOptionState(option, question.answer, state.grammarPracticeSelected, state.grammarPracticeRecorded); return `<button class="grammar-choice ${optionState}" data-grammar-choice="${escapeHtml(option)}" type="button" ${state.grammarPracticeRecorded ? "disabled" : ""}><span>${escapeHtml(option)}</span>${optionState === "correct" ? `<strong aria-hidden="true">✓</strong>` : optionState === "wrong" ? `<strong aria-hidden="true">✕</strong>` : ""}</button>`; }).join("")}</div>${feedback}</section>
+  </div>`;
+}
+
+function renderGrammar() {
+  setHeader("Grammatik", "Lernen und üben");
+  if (state.detail?.type === "practice") return renderGrammarPractice();
+  if (state.detail?.type === "section") return renderGrammarDetail(state.grammar[state.detail.index]);
+  const sections = state.grammar;
+  if (state.detail?.type === "category") {
+    const cat = CATEGORIES.find(c => c.id === state.detail.id); const items = sections.map((s, i) => ({ s, i: state.grammar.indexOf(s) })).filter(x => categoryFor(x.s) === cat.id);
+    app.innerHTML = `<div class="detail-header"><button class="back button secondary" data-grammar-back type="button">← Alle Kategorien</button><h2>${escapeHtml(cat.title)}</h2><p class="meta">Verwandte Formen und Regeln stehen direkt nacheinander.</p><button class="button grammar-category-practice" data-grammar-practice="${escapeHtml(cat.id)}" type="button">Diese Grammatik üben</button></div><div class="grid two">${items.map(({s,i}, position) => `<button class="card category-card" data-grammar-section="${i}" type="button"><span class="category-icon grammar-sequence-number">${position + 1}</span><span><h3>${escapeHtml(s.titel)}</h3><small class="meta">${escapeHtml(label(s.typ))}</small></span></button>`).join("") || `<div class="empty card">Keine Einträge.</div>`}</div>`;
+    return;
+  }
+  app.innerHTML = `<section class="grammar-practice-entry"><div><h2>Grammatik üben</h2><p>10 Aufgaben zu Formen, Deklinationen und Satzlehre.</p></div><button class="button" data-grammar-practice="all" type="button">Übung starten</button></section><div class="section-heading"><h2>Nachschlagen</h2></div><div class="grid two">${CATEGORIES.map(cat => { const count = sections.filter(s => categoryFor(s) === cat.id).length; return count ? `<button class="card category-card" data-category="${cat.id}" type="button"><span class="category-icon">${cat.icon}</span><span><h3>${escapeHtml(cat.title)}</h3><small class="meta">${count} Abschnitte</small></span></button>` : ""; }).join("")}</div>`;
 }
 
 function renderGrammarDetail(section) {
@@ -989,8 +1033,8 @@ function renderProgress() {
   const passedCoursePacks = moduleInfos.reduce((sum, info) => sum + info.passedPacks, 0);
   const courseModules = moduleInfos.filter(info => info.totalPacks > 0 && info.passedPacks === info.totalPacks).length;
   const stats = [["Beantwortet",answered],["Richtig",correct],["Genauigkeit",`${accuracy}%`],["Karten geübt",studied],["Favoriten",favorites]];
-  const courseStats = [["Kurspakete", `${passedCoursePacks}/${coursePacks}`], ["Module gemeistert", `${courseModules}/${moduleInfos.length || 10}`], ["Lernpunkte", state.courseProgress.xp || 0]];
-  app.innerHTML = `<div class="inline-alert info session-note">Dieser Fortschritt, deine Favoriten und der Kursstand gelten nur für die aktuelle Browser-Sitzung. Beim Schließen der Sitzung werden sie zurückgesetzt.</div><div class="section-heading"><h2>Kurs</h2></div><section class="ios-list">${courseStats.map(([name,value]) => `<div class="stat-row"><span>${name}</span><strong>${value}</strong></div>`).join("")}</section><div class="section-heading"><h2>Freies Üben</h2></div><section class="ios-list">${stats.map(([name,value]) => `<div class="stat-row"><span>${name}</span><strong>${value}</strong></div>`).join("")}</section><div class="section-heading"><h2>Lektionen</h2></div><div class="lesson-progress-list ios-list">${lessons().map(n => { const entries = entriesForLesson(n); const done = entries.filter(v => progressFor(v).studied > 0).length; return `<article class="lesson-progress"><div class="card-top"><strong>Lektion ${n}</strong><span class="meta">${done}/${entries.length}</span></div><div class="progress-track" style="margin-top:10px" role="progressbar" aria-label="Lektion ${n}" aria-valuemin="0" aria-valuemax="${entries.length}" aria-valuenow="${done}"><div class="progress-fill" style="width:${done / entries.length * 100}%"></div></div></article>`; }).join("")}</div><div class="reset-row ios-list"><button class="ios-destructive" id="reset-studied" type="button">Angesehene Vokabeln zurücksetzen</button><button class="ios-destructive" id="reset-all" type="button">Alle Lernstände dieser Sitzung zurücksetzen</button></div>`;
+  const courseStats = [["Lerneinheiten", `${passedCoursePacks}/${coursePacks}`], ["Module gemeistert", `${courseModules}/${moduleInfos.length || 10}`], ["Lernpunkte", state.courseProgress.xp || 0]];
+  app.innerHTML = `<div class="section-heading"><h2>Kurs</h2></div><section class="ios-list">${courseStats.map(([name,value]) => `<div class="stat-row"><span>${name}</span><strong>${value}</strong></div>`).join("")}</section><div class="section-heading"><h2>Freies Üben</h2></div><section class="ios-list">${stats.map(([name,value]) => `<div class="stat-row"><span>${name}</span><strong>${value}</strong></div>`).join("")}</section><div class="section-heading"><h2>Lektionen</h2></div><div class="lesson-progress-list ios-list">${lessons().map(n => { const entries = entriesForLesson(n); const done = entries.filter(v => progressFor(v).studied > 0).length; return `<article class="lesson-progress"><div class="card-top"><strong>Lektion ${n}</strong><span class="meta">${done}/${entries.length}</span></div><div class="progress-track" style="margin-top:10px" role="progressbar" aria-label="Lektion ${n}" aria-valuemin="0" aria-valuemax="${entries.length}" aria-valuenow="${done}"><div class="progress-fill" style="width:${done / entries.length * 100}%"></div></div></article>`; }).join("")}</div><div class="reset-row ios-list"><button class="ios-destructive" id="reset-studied" type="button">Angesehene Vokabeln zurücksetzen</button><button class="ios-destructive" id="reset-all" type="button">Alle Lernstände dieser Sitzung zurücksetzen</button></div>`;
 }
 
 function showToast(message) { toast.textContent = message; toast.classList.add("show"); clearTimeout(showToast.timer); showToast.timer = setTimeout(() => toast.classList.remove("show"), 1800); }
@@ -1046,8 +1090,16 @@ document.addEventListener("click", event => {
   if (target.dataset.mode) { state.mode = target.dataset.mode; resetQuestion(); render(); }
   if (target.hasAttribute("data-payment-retry")) { paypalSdkPromise = null; state.paymentState = "idle"; state.paymentError = ""; render(); }
   if (target.hasAttribute("data-practice-restart")) { startPractice(); render(); announce("Neuer Test gestartet."); }
-  if (target.hasAttribute("data-practice-select-all")) { state.practiceLessons = "all"; state.practicePickerOpen = true; startPractice(); render(); requestAnimationFrame(() => document.querySelector("[data-practice-select-all]")?.focus()); announce("Alle Lektionen ausgewählt."); }
-  if (target.hasAttribute("data-practice-clear")) { state.practiceLessons = []; state.practicePickerOpen = true; startPractice(); render(); requestAnimationFrame(() => document.querySelector("[data-practice-clear]")?.focus()); announce("Lektionsauswahl geleert."); }
+  if (target.hasAttribute("data-practice-picker")) {
+    const wasOpen = state.practicePickerOpen;
+    state.practicePickerOpen = !wasOpen;
+    if (wasOpen) startPractice();
+    render();
+    requestAnimationFrame(() => document.querySelector(wasOpen ? "[data-practice-picker]" : "[data-practice-lesson]")?.focus());
+  }
+  if (target.hasAttribute("data-practice-picker-close")) { state.practicePickerOpen = false; startPractice(); render(); requestAnimationFrame(() => document.querySelector("[data-practice-picker]")?.focus()); announce("Lektionsauswahl übernommen."); }
+  if (target.hasAttribute("data-practice-select-all")) { state.practiceLessons = "all"; state.practicePickerOpen = true; render(); requestAnimationFrame(() => document.querySelector("[data-practice-select-all]")?.focus()); announce("Alle Lektionen ausgewählt."); }
+  if (target.hasAttribute("data-practice-clear")) { state.practiceLessons = []; state.practicePickerOpen = true; render(); requestAnimationFrame(() => document.querySelector("[data-practice-clear]")?.focus()); announce("Lektionsauswahl geleert."); }
   if (target.id === "shuffle") { startPractice(); render(); }
   if (target.id === "reveal") { state.revealed = true; render(); }
   if (target.dataset.result && !state.answerRecorded) {
@@ -1071,8 +1123,30 @@ document.addEventListener("click", event => {
     render();
   }
   if (target.id === "remove-image") removeTranslationImage();
+  if (target.hasAttribute("data-grammar-practice")) startGrammarPractice(target.dataset.grammarPractice === "all" ? null : target.dataset.grammarPractice);
+  if (target.dataset.grammarChoice != null && !state.grammarPracticeRecorded) {
+    state.grammarPracticeSelected = target.dataset.grammarChoice;
+    state.grammarPracticeRecorded = true;
+    if (state.grammarPracticeSelected === state.grammarPracticeRound[state.grammarPracticeIndex]?.answer) state.grammarPracticeCorrect += 1;
+    render();
+    requestAnimationFrame(() => document.querySelector("[data-grammar-practice-next]")?.focus());
+  }
+  if (target.hasAttribute("data-grammar-practice-next")) {
+    if (state.grammarPracticeIndex + 1 >= state.grammarPracticeRound.length) state.grammarPracticeComplete = true;
+    else {
+      state.grammarPracticeIndex += 1;
+      state.grammarPracticeSelected = null;
+      state.grammarPracticeRecorded = false;
+    }
+    renderAtTop();
+  }
+  if (target.hasAttribute("data-grammar-practice-restart")) startGrammarPractice(state.grammarPracticeCategory);
+  if (target.hasAttribute("data-grammar-practice-back")) {
+    state.detail = state.grammarPracticeCategory ? { type: "category", id: state.grammarPracticeCategory } : null;
+    renderAtTop();
+  }
   if (target.dataset.category) navigate("grammatik", { type: "category", id: target.dataset.category });
-  if (target.dataset.grammarSection) navigate("grammatik", { type: "section", index: Number(target.dataset.grammarSection) });
+  if (target.dataset.grammarSection != null) navigate("grammatik", { type: "section", index: Number(target.dataset.grammarSection) });
   if (target.hasAttribute("data-grammar-back")) { state.detail = null; render(); }
   if (target.id === "reset-studied" && confirm("Angesehene Vokabeln wirklich zurücksetzen?")) { Object.values(state.progress).forEach(p => p.studied = 0); saveProgress(); render(); }
   if (target.id === "reset-all" && confirm("Alle Lernstände dieser Sitzung und Favoriten löschen?")) { state.progress = {}; state.courseProgress = { xp: 0, modules: {} }; saveProgress(); saveCourseProgress(); render(); }
@@ -1082,15 +1156,8 @@ document.addEventListener("input", event => {
   if (event.target.id === "search") {
     const position = event.target.selectionStart;
     state.search = event.target.value;
-    renderLearn();
+    renderVocabularyBrowser();
     const replacement = document.querySelector("#search");
-    replacement.focus(); replacement.setSelectionRange(position, position);
-  }
-  if (event.target.id === "grammar-search") {
-    const position = event.target.selectionStart;
-    state.search = event.target.value;
-    renderGrammar();
-    const replacement = document.querySelector("#grammar-search");
     replacement.focus(); replacement.setSelectionRange(position, position);
   }
   if (event.target.id === "typed-answer") state.typedAnswer = event.target.value;
@@ -1105,6 +1172,8 @@ document.addEventListener("input", event => {
     state.translationError = "";
     const results = document.querySelector("#translation-results");
     if (results) results.innerHTML = "";
+    const submit = document.querySelector("#translation-form button[type='submit']");
+    if (submit) submit.disabled = state.translationBusy || !state.translationText.trim();
   }
 });
 
@@ -1118,15 +1187,9 @@ document.addEventListener("change", event => {
     const ordered = lessons().map(String).filter(lesson => selected.has(lesson));
     state.practiceLessons = ordered.length === lessons().length ? "all" : ordered;
     state.practicePickerOpen = true;
-    startPractice();
     render();
     requestAnimationFrame(() => document.querySelector(`[data-practice-lesson][value="${changedLesson}"]`)?.focus());
     announce(`${ordered.length} Lektionen für den Test ausgewählt.`);
-  }
-  if (event.target.id === "translation-lesson") {
-    state.translationLesson = event.target.value;
-    if (state.translationText.trim()) applyBookAnalysis();
-    renderTranslate();
   }
   if (event.target.id === "latin-image") {
     const file = event.target.files?.[0];
@@ -1134,10 +1197,6 @@ document.addEventListener("change", event => {
     selectTranslationImage(file);
   }
 });
-
-document.addEventListener("toggle", event => {
-  if (event.target.id === "practice-lessons") state.practicePickerOpen = event.target.open;
-}, true);
 
 document.addEventListener("dragover", event => {
   const zone = event.target.closest?.(".upload-zone");
