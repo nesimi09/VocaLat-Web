@@ -1,5 +1,5 @@
-const CACHE = "vocalat-web-shell-v12";
-const RUNTIME_CACHE = "vocalat-web-runtime-v12";
+const CACHE = "vocalat-web-shell-v13";
+const RUNTIME_CACHE = "vocalat-web-runtime-v13";
 const ASSETS = [
   "./",
   "./index.html",

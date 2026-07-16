@@ -197,7 +197,7 @@ function vocabRow(v) {
 }
 
 function renderCourse() {
-  setHeader("Kurs", "Via Latina");
+  setHeader("Kurs", "VocaLat");
   if (!state.course?.modules?.length) {
     app.innerHTML = `<div class="card empty">Der Kurs konnte nicht geladen werden.</div>`;
     return;
@@ -213,19 +213,11 @@ function renderCourseGate() {
   const paymentStatus = paymentConfigStatus(state.paymentConfig);
   const monthlyPrice = formatMonthlyPrice(state.paymentConfig) || "4,99 € monatlich";
   app.innerHTML = `<div class="course-gate">
-    <header class="course-intro">
-      <p class="course-kicker">Via Latina</p>
-      <h2>Kurszugang</h2>
-      <p>${state.course.modules.length} Module · Vokabeln, Grammatik und Wiederholungen aus dem Buch</p>
-    </header>
-    <section class="course-access" aria-labelledby="course-payment-title">
+    <section class="course-access" aria-label="Kurs freischalten">
       <div class="course-payment-card">
-        <div class="course-payment-head"><div><h3 id="course-payment-title">Monatszugang mit PayPal</h3><p class="meta">Freischaltung für den vollständigen Kurs</p></div><strong>${escapeHtml(monthlyPrice)}</strong></div>
-        <div class="payment-status ${paymentStatus.state}">${escapeHtml(paymentStatus.label)}</div>
+        <strong class="course-price">${escapeHtml(monthlyPrice)}</strong>
         ${paymentStatus.ready ? state.paymentState === "error" ? `<button class="button secondary" data-payment-retry type="button">PayPal erneut laden</button>` : `<div id="paypal-subscription-buttons" aria-label="PayPal-Sandbox-Abo"></div>` : `<button class="button payment-disabled" type="button" disabled>PayPal ist gerade nicht verfügbar</button>`}
         ${state.paymentError ? `<div class="inline-alert error" role="alert">${escapeHtml(state.paymentError)}</div>` : ""}
-        <p class="course-sandbox-note"><strong>Sandbox:</strong> Derzeit wird kein echtes Geld abgebucht.</p>
-        <p class="course-session-note">Nach der Bestätigung gilt der Zugang für diese Browsersitzung.</p>
       </div>
       <details class="course-code-access" ${state.courseAccessError ? "open" : ""}>
         <summary>Stattdessen Kurscode verwenden</summary>
@@ -239,7 +231,7 @@ function renderCourseGate() {
       </details>
     </section>
     <section class="course-outline" aria-labelledby="course-outline-title">
-      <div class="section-heading"><h2 id="course-outline-title">Kursinhalt</h2><span>${state.course.modules.length} Module</span></div>
+      <div class="section-heading"><h2 id="course-outline-title">Kursinhalt</h2></div>
       <ol class="course-outline-list">${state.course.modules.map((module, index) => `<li><span>${index + 1}</span><strong>${escapeHtml(module.title)}</strong><small>Lektion ${lessonRange(module)}</small></li>`).join("")}</ol>
     </section>
   </div>`;
@@ -363,7 +355,6 @@ function renderCourseMap() {
 
   app.innerHTML = `<div class="course-map">
     <header class="course-overview">
-      <p class="course-kicker">Via Latina</p>
       <h2>Kursübersicht</h2>
       <p class="course-overview-meta"><strong>${passedPacks} von ${totalPacks}</strong> Paketen in dieser Sitzung abgeschlossen</p>
       <div class="progress-track" role="progressbar" aria-label="Kursfortschritt" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${percent}"><div class="progress-fill" style="width:${percent}%"></div></div>
@@ -606,7 +597,7 @@ function lockCourse() {
   state.courseRound = [];
   state.courseAttempts = [];
   render();
-  announce("Kurszugang dieser Sitzung beendet.");
+  announce("Zugang dieser Sitzung beendet.");
 }
 
 function startPractice() {

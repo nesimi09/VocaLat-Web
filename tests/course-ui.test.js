@@ -73,12 +73,13 @@ test("free practice supports an accessible multi-lesson selection", () => {
   assert.match(styles, /\.lesson-checkbox-grid/);
 });
 
-test("course gate exposes only a clearly labelled PayPal sandbox subscription", () => {
-  assert.match(app, /Monatszugang mit PayPal/);
+test("course gate keeps PayPal and course codes without extra introductory copy", () => {
+  assert.match(app, /4,99 € monatlich/);
   assert.match(app, /paypal-subscription-buttons/);
+  assert.match(app, /class="course-code-access"/);
   assert.match(app, /actions\.subscription\.create/);
   assert.match(app, /plan_id:\s*state\.paymentConfig\.planId/);
-  assert.match(app, /Sandbox:<\/strong> Derzeit wird kein echtes Geld abgebucht/);
+  assert.doesNotMatch(app, /Monatszugang mit PayPal|Freischaltung für den vollständigen Kurs|PayPal-Sandbox bereit|Derzeit wird kein echtes Geld abgebucht|Nach der Bestätigung gilt der Zugang|10 Module ·|Via Latina|Kurszugang/);
   assert.doesNotMatch(app, /Prototyp|Latein verstehen – Schritt für Schritt|Mit PayPal testen/);
   assert.doesNotMatch(app, /course-gate-hero|course-map-hero|course-chip/);
   assert.doesNotMatch(app, /[\w.+-]+@[\w.-]+\.[a-z]{2,}/i);
