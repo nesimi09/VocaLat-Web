@@ -14,11 +14,13 @@ import {
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const committedSource = readFileSync(resolve(root, "data/payment.json"), "utf8");
 const committedConfig = JSON.parse(committedSource);
+const activeAt = Date.parse("2030-01-01T00:00:00Z");
 const readySandboxConfig = {
   ...committedConfig,
   enabled: true,
   clientId: "SandboxPublicClient_1234567890",
-  planId: "P-0123456789ABCDEFGHIJ"
+  planId: "P-0123456789ABCDEFGHIJ",
+  expiresAt: "2030-01-01T01:00:00Z"
 };
 
 test("committed subscription is 4.99 EUR every month", () => {
@@ -29,20 +31,23 @@ test("committed subscription is 4.99 EUR every month", () => {
   assert.equal(formatMonthlyPrice(committedConfig), "4,99 € monatlich");
 });
 
-test("the GitHub Pages prototype is disabled and fails closed by default", () => {
-  const validation = validatePaymentConfig(committedConfig);
+test("the temporary GitHub Pages sandbox test expires closed", () => {
+  const beforeExpiry = Date.parse(committedConfig.expiresAt) - 1;
+  const afterExpiry = Date.parse(committedConfig.expiresAt) + 1;
+  const validation = validatePaymentConfig(committedConfig, beforeExpiry);
   assert.equal(validation.valid, true);
-  assert.equal(validation.ready, false);
-  assert.equal(isSandboxSubscriptionReady(committedConfig), false);
-  assert.equal(buildPayPalSdkUrl(committedConfig), null);
-  assert.equal(paymentConfigStatus(committedConfig).state, "disabled");
-  assert.equal(buildPayPalSdkUrl({ ...readySandboxConfig, environment: "production" }), null);
-  assert.equal(buildPayPalSdkUrl({ ...readySandboxConfig, planId: "" }), null);
+  assert.equal(validation.ready, true);
+  assert.equal(isSandboxSubscriptionReady(committedConfig, beforeExpiry), true);
+  assert.equal(isSandboxSubscriptionReady(committedConfig, afterExpiry), false);
+  assert.equal(buildPayPalSdkUrl(committedConfig, afterExpiry), null);
+  assert.equal(paymentConfigStatus(committedConfig, afterExpiry).state, "expired");
+  assert.equal(buildPayPalSdkUrl({ ...readySandboxConfig, environment: "production" }, activeAt), null);
+  assert.equal(buildPayPalSdkUrl({ ...readySandboxConfig, planId: "" }, activeAt), null);
 });
 
 test("an enabled sandbox configuration builds a subscription-only SDK URL", () => {
-  assert.equal(validatePaymentConfig(readySandboxConfig).ready, true);
-  const url = new URL(buildPayPalSdkUrl(readySandboxConfig));
+  assert.equal(validatePaymentConfig(readySandboxConfig, activeAt).ready, true);
+  const url = new URL(buildPayPalSdkUrl(readySandboxConfig, activeAt));
   assert.equal(url.origin, "https://www.paypal.com");
   assert.equal(url.pathname, "/sdk/js");
   assert.equal(url.searchParams.get("client-id"), readySandboxConfig.clientId);
@@ -61,18 +66,20 @@ test("the public config contains no email, secret or personal PayPal value", () 
     "currency",
     "enabled",
     "environment",
+    "expiresAt",
     "planId",
     "schemaVersion"
   ]);
-  assert.equal(committedConfig.enabled, false);
+  assert.equal(committedConfig.enabled, true);
   assert.equal(committedConfig.environment, "sandbox");
-  assert.equal(committedConfig.clientId, "");
-  assert.equal(committedConfig.planId, "");
+  assert.match(committedConfig.clientId, /^[A-Za-z0-9_-]{20,256}$/);
+  assert.match(committedConfig.planId, /^P-[A-Z0-9]{10,64}$/);
+  assert.match(committedConfig.expiresAt, /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$/);
   assert.doesNotMatch(committedSource, /@|email|secret|password|client[_-]?secret|merchant|payer|customer|webhook/i);
 
   const unsafeConfig = { ...readySandboxConfig, clientSecret: "do-not-commit" };
-  assert.equal(validatePaymentConfig(unsafeConfig).valid, false);
-  assert.equal(buildPayPalSdkUrl(unsafeConfig), null);
+  assert.equal(validatePaymentConfig(unsafeConfig, activeAt).valid, false);
+  assert.equal(buildPayPalSdkUrl(unsafeConfig, activeAt), null);
 
   for (const file of ["app.js", "README.md", "index.html", "data/payment.json"]) {
     const source = readFileSync(resolve(root, file), "utf8");

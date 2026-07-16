@@ -1,11 +1,12 @@
 {
   "schemaVersion": 1,
-  "enabled": false,
+  "enabled": true,
   "environment": "sandbox",
   "currency": "EUR",
   "amount": "4.99",
   "billingInterval": "MONTH",
   "billingIntervalCount": 1,
-  "clientId": "",
-  "planId": ""
+  "clientId": "AfHoS_BGkpdby3YRyX6_mesHL5n_YUfh_GeA6fZ-7nArhQqYyOq8sCBAUY8nTBRYk_a5ygJ93OOub1S5",
+  "planId": "P-01H84197FG232040FNJMUHAA",
+  "expiresAt": "2026-07-16T22:00:00Z"
 }

@@ -8,11 +8,13 @@ const EXPECTED_KEYS = new Set([
   "billingInterval",
   "billingIntervalCount",
   "clientId",
-  "planId"
+  "planId",
+  "expiresAt"
 ]);
 
 const PUBLIC_CLIENT_ID_PATTERN = /^[A-Za-z0-9_-]{20,256}$/;
 const PLAN_ID_PATTERN = /^P-[A-Z0-9]{10,64}$/;
+const EXPIRY_PATTERN = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$/;
 const EMAIL_PATTERN = /\b[^\s@]+@[^\s@]+\.[^\s@]+\b/;
 const SENSITIVE_KEY_PATTERN = /(?:secret|password|private|token|webhook|merchant|payer|customer|email)/i;
 
@@ -22,7 +24,7 @@ const SENSITIVE_KEY_PATTERN = /(?:secret|password|private|token|webhook|merchant
  * This module deliberately supports sandbox subscriptions only. It must never
  * receive a client secret, an email address or other personal/payment data.
  */
-export function validatePaymentConfig(config) {
+export function validatePaymentConfig(config, now = Date.now()) {
   const errors = [];
 
   if (!isPlainObject(config)) {
@@ -61,29 +63,37 @@ export function validatePaymentConfig(config) {
   if (!clientIdValid) errors.push("Die öffentliche Sandbox-Client-ID ist ungültig.");
   if (!planIdValid) errors.push("Die öffentliche Sandbox-Plan-ID ist ungültig.");
 
-  if (config.enabled === true && (!config.clientId || !config.planId)) {
-    errors.push("Für einen aktivierten Sandbox-Test fehlen Client-ID oder Plan-ID.");
+  const expiresAt = typeof config.expiresAt === "string" && EXPIRY_PATTERN.test(config.expiresAt)
+    ? Date.parse(config.expiresAt)
+    : Number.NaN;
+  const expiresAtValid = config.expiresAt === "" || Number.isFinite(expiresAt);
+  if (!expiresAtValid) errors.push("Der Ablaufzeitpunkt des Sandbox-Tests ist ungültig.");
+
+  if (config.enabled === true && (!config.clientId || !config.planId || !config.expiresAt)) {
+    errors.push("Für einen aktivierten Sandbox-Test fehlen Client-ID, Plan-ID oder Ablaufzeitpunkt.");
   }
 
   const valid = errors.length === 0;
+  const expired = valid && config.enabled === true && expiresAt <= Number(now);
   return {
     valid,
-    ready: valid && config.enabled === true,
+    ready: valid && config.enabled === true && !expired,
+    expired,
     errors
   };
 }
 
 /** Return true only for an explicitly enabled and fully valid sandbox setup. */
-export function isSandboxSubscriptionReady(config) {
-  return validatePaymentConfig(config).ready;
+export function isSandboxSubscriptionReady(config, now = Date.now()) {
+  return validatePaymentConfig(config, now).ready;
 }
 
 /**
  * Build the public JavaScript SDK URL without making a network request.
  * Returns null for disabled or malformed configurations (fail closed).
  */
-export function buildPayPalSdkUrl(config) {
-  if (!isSandboxSubscriptionReady(config)) return null;
+export function buildPayPalSdkUrl(config, now = Date.now()) {
+  if (!isSandboxSubscriptionReady(config, now)) return null;
 
   const url = new URL(PAYPAL_SDK_ENDPOINT);
   url.searchParams.set("client-id", config.clientId);
@@ -95,14 +105,22 @@ export function buildPayPalSdkUrl(config) {
 }
 
 /** A small UI-safe status summary; it never echoes credentials. */
-export function paymentConfigStatus(config) {
-  const validation = validatePaymentConfig(config);
+export function paymentConfigStatus(config, now = Date.now()) {
+  const validation = validatePaymentConfig(config, now);
   if (!validation.valid) {
     return {
       state: "invalid",
       ready: false,
       label: "Sandbox-Konfiguration prüfen",
       errors: validation.errors
+    };
+  }
+  if (validation.expired) {
+    return {
+      state: "expired",
+      ready: false,
+      label: "PayPal-Test automatisch beendet",
+      errors: []
     };
   }
   if (!validation.ready) {
