@@ -1,0 +1,684 @@
+{
+  "schemaVersion": 1,
+  "id": "via-latina-foerderkurs",
+  "title": "Via Latina – Förderkurs",
+  "description": "Ein kleinschrittiger Kurs für Schülerinnen und Schüler, die lateinische Grundlagen sicher wiederholen möchten.",
+  "packSize": 8,
+  "reviewCadence": [
+    "nach 2 weiteren Aufgaben",
+    "am Packende",
+    "zu Beginn des nächsten Packs",
+    "im Mischcheck nach 3 Packs"
+  ],
+  "mastery": {
+    "requiredScore": 80,
+    "minimumSkillScore": 60,
+    "lessonReadyScore": 70,
+    "newWordsPerPack": 8
+  },
+  "modules": [
+    {
+      "id": "m01-domus-familie",
+      "title": "Domus & Familie",
+      "story": "Du kommst in einer römischen Villa an, lernst die Familie kennen und hilfst bei den ersten Aufgaben des Tages.",
+      "difficulty": 1,
+      "lessons": [1, 2, 3],
+      "grammarTitles": [
+        "a-Deklination – serva, servae f.",
+        "o-Deklination – avus und bellum",
+        "Konsonantische Deklination – clamor, mater und litus",
+        "Präsens von esse, posse und ire"
+      ],
+      "objectives": [
+        "Wörter aus Familie, Haus und Alltag sicher erkennen und wiedergeben",
+        "Nominativ als Subjekt und Akkusativ als Objekt unterscheiden",
+        "Einfache Sätze im Präsens von der Verbform aus erschließen"
+      ],
+      "concept": {
+        "explanation": "Im einfachen lateinischen Satz handelt das Wort im Nominativ; das direkte Ziel der Handlung steht oft im Akkusativ.",
+        "rule": "Frage zuerst: Wer handelt? Danach: Wen oder was betrifft die Handlung? Suche anschließend das Verb.",
+        "example": { "latin": "Familia puerum exspectat.", "german": "Die Familie erwartet den Jungen." },
+        "commonMistake": "Nicht automatisch das erste Wort als Subjekt übersetzen; die Endung entscheidet über den Fall."
+      },
+      "challenge": {
+        "optional": true,
+        "title": "Villa-Mission",
+        "prompt": "Ordne einen Satz mit familia, puer und exspectare und begründe Nominativ und Akkusativ."
+      },
+      "questions": [
+        {
+          "id": "q1-familia",
+          "type": "choice",
+          "skill": "vocabulary",
+          "prompt": "Was bedeutet familia?",
+          "answer": "die Hausgemeinschaft",
+          "options": ["die Hausgemeinschaft", "die Schule", "der Junge", "die Mahlzeit"],
+          "explanation": "familia bezeichnet im Buch die gesamte Hausgemeinschaft."
+        },
+        {
+          "id": "q2-hodie",
+          "type": "typed",
+          "skill": "vocabulary",
+          "prompt": "Übersetze hodie ins Deutsche.",
+          "answer": "heute",
+          "options": [],
+          "explanation": "hodie ist ein Adverb und bedeutet heute."
+        },
+        {
+          "id": "q3-subjekt",
+          "type": "choice",
+          "skill": "grammar",
+          "prompt": "In welchem Fall steht das Subjekt eines einfachen Satzes?",
+          "answer": "Nominativ",
+          "options": ["Nominativ", "Genitiv", "Dativ", "Akkusativ"],
+          "explanation": "Der Nominativ beantwortet die Frage: Wer oder was handelt?"
+        },
+        {
+          "id": "q4-ad",
+          "type": "typed",
+          "skill": "grammar",
+          "prompt": "Mit welchem deutschen Richtungswort übersetzt man ad + Akkusativ meist?",
+          "answer": "zu",
+          "options": [],
+          "explanation": "ad + Akkusativ bezeichnet eine Richtung: zu oder zu ... hin."
+        }
+      ]
+    },
+    {
+      "id": "m02-schule-forum-circus",
+      "title": "Schule, Forum & Circus",
+      "story": "Der Weg führt von der römischen Schule über das Forum bis zu einem aufregenden Wagenrennen.",
+      "difficulty": 2,
+      "lessons": [4, 5, 6],
+      "grammarTitles": [
+        "a-Deklination – serva, servae f.",
+        "o-Deklination – avus und bellum",
+        "Konsonantische Deklination – clamor, mater und litus"
+      ],
+      "objectives": [
+        "Schul-, Stadt- und Circusvokabular aktiv verwenden",
+        "Adjektive passend zu Genus, Numerus und Kasus zuordnen",
+        "Besitzangaben und Verbote im Satz erkennen"
+      ],
+      "concept": {
+        "explanation": "Ein Adjektiv passt seine Endung an das Bezugswort an. Es kann im Satz getrennt vom Substantiv stehen.",
+        "rule": "Prüfe bei Substantiv und Adjektiv immer dieselben drei Merkmale: Kasus, Numerus und Genus.",
+        "example": { "latin": "magnum forum", "german": "das große Forum" },
+        "commonMistake": "Nicht nur nach der Wortnähe verbinden; übereinstimmende Endungen und das Genus sind wichtiger."
+      },
+      "challenge": {
+        "optional": true,
+        "title": "Circus-Kommentar",
+        "prompt": "Bilde eine kurze Beschreibung mit spectator, agitator und einem passenden Adjektiv."
+      },
+      "questions": [
+        {
+          "id": "q1-magister",
+          "type": "choice",
+          "skill": "vocabulary",
+          "prompt": "Was bedeutet magister?",
+          "answer": "der Lehrer",
+          "options": ["der Lehrer", "der Schüler", "der Freund", "der Zuschauer"],
+          "explanation": "magister, magistri m. bedeutet der Lehrer."
+        },
+        {
+          "id": "q2-scribere",
+          "type": "typed",
+          "skill": "vocabulary",
+          "prompt": "Übersetze scribere.",
+          "answer": "schreiben",
+          "options": [],
+          "explanation": "scribere ist das lateinische Verb für schreiben."
+        },
+        {
+          "id": "q3-kongruenz",
+          "type": "choice",
+          "skill": "forms",
+          "prompt": "Welche Verbindung bedeutet das große Forum?",
+          "answer": "magnum forum",
+          "options": ["magnum forum", "magnus forum", "magna forum", "magni forum"],
+          "explanation": "forum ist Neutrum Singular; deshalb lautet das passende Adjektiv magnum."
+        },
+        {
+          "id": "q4-noli",
+          "type": "typed",
+          "skill": "grammar",
+          "prompt": "Welche Satzfunktion hat noli + Infinitiv?",
+          "answer": "Verbot",
+          "options": [],
+          "explanation": "noli mit Infinitiv drückt ein Verbot an eine Person aus."
+        }
+      ]
+    },
+    {
+      "id": "m03-arena-goettersagen",
+      "title": "Arena & Göttersagen",
+      "story": "Nach dem Kampf in der Arena steigst du zum Tempel hinauf und hörst eine alte römische Sage.",
+      "difficulty": 2,
+      "lessons": [8, 9, 10],
+      "grammarTitles": [
+        "Perfekt, Plusquamperfekt und Futur II Aktiv",
+        "Konsonantische Deklination – clamor, mater und litus",
+        "i-Deklination – civis, navis und mare"
+      ],
+      "objectives": [
+        "Vokabeln aus Arena, Alltag und Religion beherrschen",
+        "Präsens und Perfekt an Stamm und Endung unterscheiden",
+        "Neue Stammformen beim Vokabellernen mitsprechen"
+      ],
+      "concept": {
+        "explanation": "Das Perfekt erzählt eine abgeschlossene Handlung. Viele Verben zeigen dafür einen eigenen Perfektstamm.",
+        "rule": "Bilde das Aktivperfekt aus Perfektstamm plus -i, -isti, -it, -imus, -istis oder -erunt.",
+        "example": { "latin": "narrare – narravi – narravit", "german": "er oder sie erzählte" },
+        "commonMistake": "Nicht den Präsensstamm verwenden, wenn in der Vokabel eine eigene Perfektform angegeben ist."
+      },
+      "challenge": {
+        "optional": true,
+        "title": "Tempelchronik",
+        "prompt": "Finde in einem kurzen Sagentext alle Perfektformen und ordne sie ihren Infinitiven zu."
+      },
+      "questions": [
+        {
+          "id": "q1-pugna",
+          "type": "choice",
+          "skill": "vocabulary",
+          "prompt": "Was bedeutet pugna?",
+          "answer": "der Kampf",
+          "options": ["der Kampf", "das Urteil", "der Tempel", "die Tür"],
+          "explanation": "pugna, pugnae f. bedeutet der Kampf."
+        },
+        {
+          "id": "q2-adesse",
+          "type": "typed",
+          "skill": "vocabulary",
+          "prompt": "Übersetze adesse.",
+          "answer": "da sein",
+          "options": [],
+          "explanation": "adesse bedeutet da oder anwesend sein."
+        },
+        {
+          "id": "q3-narravit",
+          "type": "choice",
+          "skill": "forms",
+          "prompt": "Welche Form ist die 3. Person Singular Perfekt von narrare?",
+          "answer": "narravit",
+          "options": ["narravit", "narrat", "narrabat", "narrabit"],
+          "explanation": "Der Perfektstamm narrav- erhält in der 3. Person Singular die Endung -it."
+        },
+        {
+          "id": "q4-perfektstamm",
+          "type": "typed",
+          "skill": "grammar",
+          "prompt": "Welches Tempus zeigt servavit?",
+          "answer": "Perfekt",
+          "options": [],
+          "explanation": "servav- ist der Perfektstamm von servare; -it markiert die 3. Person Singular."
+        }
+      ]
+    },
+    {
+      "id": "m04-troja-aeneas",
+      "title": "Troja & Aeneas",
+      "story": "Du erlebst die List um Troja, fliehst mit Aeneas und suchst nach einer neuen Heimat.",
+      "difficulty": 2,
+      "lessons": [11, 12, 13],
+      "grammarTitles": [
+        "Perfekt von esse, posse und ire",
+        "e-Deklination – res, rei f.",
+        "i-Deklination – civis, navis und mare",
+        "Perfekt, Plusquamperfekt und Futur II Aktiv"
+      ],
+      "objectives": [
+        "Erzählvokabular rund um Troja und Aeneas verstehen",
+        "Unregelmäßige Perfektformen sicher zuordnen",
+        "Demonstrativpronomen und wichtige Nebensatzsignale erkennen"
+      ],
+      "concept": {
+        "explanation": "Signalwörter wie quia, quamquam oder cum zeigen, wie ein Nebensatz mit dem Hauptsatz verbunden ist.",
+        "rule": "Markiere zuerst das Signalwort, suche dann das Prädikat des Nebensatzes und übersetze die Sinneinheit zusammen.",
+        "example": { "latin": "cum venit", "german": "als er oder sie kam" },
+        "commonMistake": "Den Nebensatz nicht Wort für Wort in die Reihenfolge des lateinischen Satzes pressen."
+      },
+      "challenge": {
+        "optional": true,
+        "title": "Fluchtplan",
+        "prompt": "Gliedere einen Satz mit cum in Haupt- und Nebensatz und formuliere eine flüssige deutsche Übersetzung."
+      },
+      "questions": [
+        {
+          "id": "q1-urbs",
+          "type": "choice",
+          "skill": "vocabulary",
+          "prompt": "Was bedeutet urbs?",
+          "answer": "die Stadt",
+          "options": ["die Stadt", "die Heimat", "das Schiff", "die Festung"],
+          "explanation": "urbs, urbis f. bedeutet die Stadt."
+        },
+        {
+          "id": "q2-tradere",
+          "type": "typed",
+          "skill": "vocabulary",
+          "prompt": "Übersetze tradere mit einer Buchbedeutung.",
+          "answer": "übergeben",
+          "options": [],
+          "explanation": "tradere bedeutet übergeben oder anvertrauen."
+        },
+        {
+          "id": "q3-spei",
+          "type": "choice",
+          "skill": "forms",
+          "prompt": "Wie lautet der Genitiv Singular von spes?",
+          "answer": "spei",
+          "options": ["spei", "spes", "spem", "sperum"],
+          "explanation": "spes gehört zur e-Deklination: spes, spei f."
+        },
+        {
+          "id": "q4-cum",
+          "type": "typed",
+          "skill": "reading",
+          "prompt": "Mit welchem deutschen Zeitwort kann cum + Perfekt hier beginnen?",
+          "answer": "als",
+          "options": [],
+          "explanation": "Im Buch wird cum + Perfekt für ein plötzliches als verwendet."
+        }
+      ]
+    },
+    {
+      "id": "m05-rom-entsteht",
+      "title": "Rom entsteht",
+      "story": "Von Romulus und Remus führt der Weg zu frühen Konflikten, Gesetzen und mutigen Taten der Stadt.",
+      "difficulty": 3,
+      "lessons": [14, 15, 16],
+      "grammarTitles": [
+        "PPP Bildung und Verwendung",
+        "Passiv: Perfekt, Plusquamperfekt und Futur II",
+        "Partizipien Überblick"
+      ],
+      "objectives": [
+        "Vokabular zu Herrschaft, Staat und Konflikt anwenden",
+        "Das PPP aus der Stammformenangabe erkennen",
+        "Perfekt Aktiv und Perfekt Passiv unterscheiden"
+      ],
+      "concept": {
+        "explanation": "Das PPP beschreibt eine vorzeitige passive Handlung und bildet mit esse die passiven Perfektzeiten.",
+        "rule": "PPP und Form von esse gehören zusammen; das PPP stimmt mit dem Subjekt in Genus und Numerus überein.",
+        "example": { "latin": "laudatus est", "german": "er ist gelobt worden" },
+        "commonMistake": "Das PPP nicht automatisch aktiv übersetzen; seine Grundbedeutung ist passiv."
+      },
+      "challenge": {
+        "optional": true,
+        "title": "Senatsmeldung",
+        "prompt": "Unterscheide in einer kurzen Meldung aktive Perfektformen von PPP-plus-esse-Formen."
+      },
+      "questions": [
+        {
+          "id": "q1-rex",
+          "type": "choice",
+          "skill": "vocabulary",
+          "prompt": "Was bedeutet rex?",
+          "answer": "der König",
+          "options": ["der König", "der Bürger", "der Hirte", "der Soldat"],
+          "explanation": "rex, regis m. bedeutet der König."
+        },
+        {
+          "id": "q2-lex",
+          "type": "typed",
+          "skill": "vocabulary",
+          "prompt": "Übersetze lex.",
+          "answer": "das Gesetz",
+          "options": [],
+          "explanation": "lex, legis f. bedeutet das Gesetz."
+        },
+        {
+          "id": "q3-ponere",
+          "type": "choice",
+          "skill": "forms",
+          "prompt": "Welche Stammform gehört als Supinform zu ponere?",
+          "answer": "positum",
+          "options": ["positum", "ponitum", "possum", "posit"],
+          "explanation": "Die Buchangabe lautet ponere, pono, posui, positum."
+        },
+        {
+          "id": "q4-passiv",
+          "type": "typed",
+          "skill": "reading",
+          "prompt": "Übersetze laudatus est.",
+          "answer": "er ist gelobt worden",
+          "options": [],
+          "explanation": "PPP laudatus und est bilden das Perfekt Passiv."
+        }
+      ]
+    },
+    {
+      "id": "m06-provinzen-piraten",
+      "title": "Provinzen & Piraten",
+      "story": "Du reist durch römische Provinzen, begegnest Piraten und hörst eine eindringliche Rede.",
+      "difficulty": 3,
+      "lessons": [17, 18, 19],
+      "grammarTitles": [
+        "Adverbien der i-Deklination",
+        "Passiv: Präsens, Imperfekt und Futur I",
+        "Konjunktiv Imperfekt Aktiv und Passiv"
+      ],
+      "objectives": [
+        "Reise-, Piraten- und Redevokabular sicher abrufen",
+        "Adjektive der i-Deklination in Adverbien umformen",
+        "cum-, ubi- und dum-Sätze als Sinneinheiten übersetzen"
+      ],
+      "concept": {
+        "explanation": "Nebensatzsignale können Zeit, Grund oder Gegensatz ausdrücken. Der Kontext entscheidet über die passende deutsche Verbindung.",
+        "rule": "Übersetze cum mit Konjunktiv probeweise als als, weil oder obwohl und wähle die logischste Variante.",
+        "example": { "latin": "cum piratae instarent", "german": "als die Piraten drohten" },
+        "commonMistake": "cum nicht immer mit mit übersetzen; als Konjunktion leitet es einen Nebensatz ein."
+      },
+      "challenge": {
+        "optional": true,
+        "title": "Piratenbericht",
+        "prompt": "Wähle für zwei cum-Sätze jeweils die sinnvollste Übersetzung und begründe deine Entscheidung."
+      },
+      "questions": [
+        {
+          "id": "q1-provincia",
+          "type": "choice",
+          "skill": "vocabulary",
+          "prompt": "Was bedeutet provincia?",
+          "answer": "die Provinz",
+          "options": ["die Provinz", "das Gefängnis", "die Insel", "die Rede"],
+          "explanation": "provincia, provinciae f. bedeutet die Provinz."
+        },
+        {
+          "id": "q2-contemnere",
+          "type": "typed",
+          "skill": "vocabulary",
+          "prompt": "Übersetze contemnere.",
+          "answer": "verachten",
+          "options": [],
+          "explanation": "contemnere bedeutet verachten."
+        },
+        {
+          "id": "q3-graviter",
+          "type": "choice",
+          "skill": "forms",
+          "prompt": "Welches Adverb gehört zu gravis?",
+          "answer": "graviter",
+          "options": ["graviter", "grave", "gravissime", "gravis"],
+          "explanation": "Adverbien zu vielen Adjektiven der i-Deklination enden auf -iter."
+        },
+        {
+          "id": "q4-cum-sinn",
+          "type": "typed",
+          "skill": "reading",
+          "prompt": "Nenne eine häufige temporale Übersetzung von cum mit Konjunktiv.",
+          "answer": "als",
+          "options": [],
+          "explanation": "Temporales cum wird häufig mit als übersetzt."
+        }
+      ]
+    },
+    {
+      "id": "m07-inseln-abschied-midas",
+      "title": "Inseln, Abschied & Midas",
+      "story": "Eine Seereise führt durch Verlust und Abschied bis zur gefährlichen Goldgabe des Königs Midas.",
+      "difficulty": 3,
+      "lessons": [20, 21, 22],
+      "grammarTitles": [
+        "PPA und seine Übersetzung",
+        "Partizipien Überblick",
+        "AcI und NcI"
+      ],
+      "objectives": [
+        "Gefühls-, Reise- und Midasvokabular aktiv nutzen",
+        "Das PPA als gleichzeitig und aktiv erkennen",
+        "Akkusativ-plus-Infinitiv-Verbindungen vorbereitend erfassen"
+      ],
+      "concept": {
+        "explanation": "Das PPA beschreibt eine Handlung, die gleichzeitig zur Handlung des Prädikats stattfindet.",
+        "rule": "Übersetze das PPA zunächst mit während und einem aktiven Verb; formuliere danach flüssiger.",
+        "example": { "latin": "iens", "german": "gehend; während er oder sie geht" },
+        "commonMistake": "Das PPA nicht vorzeitig oder passiv übersetzen; es ist gleichzeitig und aktiv."
+      },
+      "challenge": {
+        "optional": true,
+        "title": "Midas-Warnung",
+        "prompt": "Löse eine PPA-Verbindung erst wörtlich und dann als flüssigen deutschen Nebensatz auf."
+      },
+      "questions": [
+        {
+          "id": "q1-insula",
+          "type": "choice",
+          "skill": "vocabulary",
+          "prompt": "Was bedeutet insula?",
+          "answer": "die Insel",
+          "options": ["die Insel", "die Welle", "das Gold", "der Becher"],
+          "explanation": "insula, insulae f. bedeutet die Insel."
+        },
+        {
+          "id": "q2-venia",
+          "type": "typed",
+          "skill": "vocabulary",
+          "prompt": "Übersetze venia.",
+          "answer": "die Verzeihung",
+          "options": [],
+          "explanation": "venia, veniae f. bedeutet die Verzeihung."
+        },
+        {
+          "id": "q3-iens",
+          "type": "choice",
+          "skill": "forms",
+          "prompt": "Welche Grundübersetzung passt zu iens?",
+          "answer": "gehend",
+          "options": ["gehend", "gegangen", "gehen werdend", "gegangen worden"],
+          "explanation": "iens ist das PPA von ire und bedeutet gehend."
+        },
+        {
+          "id": "q4-ppa",
+          "type": "typed",
+          "skill": "grammar",
+          "prompt": "Welches Zeitverhältnis hat das PPA?",
+          "answer": "gleichzeitig",
+          "options": [],
+          "explanation": "Das PPA ist gleichzeitig zur Handlung des Prädikats."
+        }
+      ]
+    },
+    {
+      "id": "m08-staat-krieg-erfinder",
+      "title": "Staat, Krieg & Erfinder",
+      "story": "Du beobachtest politische Entscheidungen, einen großen Sieg und die Ideen eines berühmten Erfinders.",
+      "difficulty": 3,
+      "lessons": [23, 24, 25],
+      "grammarTitles": [
+        "AcI und NcI",
+        "Steigerung von Adjektiven und Adverbien",
+        "Relativpronomen qui, quae, quod"
+      ],
+      "objectives": [
+        "Staats-, Kriegs- und Technikvokabular verstehen",
+        "Einen AcI mit einem deutschen dass-Satz wiedergeben",
+        "Steigerungsformen und Relativpronomen erkennen"
+      ],
+      "concept": {
+        "explanation": "Im AcI wird der lateinische Akkusativ zum Subjekt eines deutschen dass-Satzes; der Infinitiv wird zum Prädikat.",
+        "rule": "Nach Verben des Sagens, Meinens, Wahrnehmens und Wissens: Akkusativ als Subjekt, Infinitiv als Verb des dass-Satzes.",
+        "example": { "latin": "Scio Marcum venire.", "german": "Ich weiß, dass Marcus kommt." },
+        "commonMistake": "Den Akkusativ im AcI nicht als gewöhnliches direktes Objekt übersetzen."
+      },
+      "challenge": {
+        "optional": true,
+        "title": "Feldherrenmeldung",
+        "prompt": "Forme zwei AcI-Sätze in deutsche dass-Sätze um und bestimme das Zeitverhältnis."
+      },
+      "questions": [
+        {
+          "id": "q1-civitas",
+          "type": "choice",
+          "skill": "vocabulary",
+          "prompt": "Welche Buchbedeutung hat civitas?",
+          "answer": "der Staat",
+          "options": ["der Staat", "die Truppen", "das Denkmal", "die Armut"],
+          "explanation": "civitas kann die Bürgerschaft oder den Staat bezeichnen."
+        },
+        {
+          "id": "q2-vincere",
+          "type": "typed",
+          "skill": "vocabulary",
+          "prompt": "Übersetze vincere mit einer Buchbedeutung.",
+          "answer": "siegen",
+          "options": [],
+          "explanation": "vincere bedeutet siegen oder besiegen."
+        },
+        {
+          "id": "q3-aci",
+          "type": "choice",
+          "skill": "reading",
+          "prompt": "Welche Übersetzung passt zu Scio Marcum venire?",
+          "answer": "Ich weiß, dass Marcus kommt.",
+          "options": ["Ich weiß, dass Marcus kommt.", "Marcus weiß, dass ich komme.", "Ich sehe Marcus kommen nicht.", "Marcus kommt, weil ich es weiß."],
+          "explanation": "Marcum wird zum Subjekt und venire zum Prädikat des deutschen dass-Satzes."
+        },
+        {
+          "id": "q4-maximus",
+          "type": "typed",
+          "skill": "forms",
+          "prompt": "Welche Steigerungsstufe ist maximus?",
+          "answer": "Superlativ",
+          "options": [],
+          "explanation": "maximus bedeutet der größte und ist ein Superlativ."
+        }
+      ]
+    },
+    {
+      "id": "m09-caesar-theater-weltreich",
+      "title": "Caesar, Theater & Weltreich",
+      "story": "Mit Caesar ziehst du durch Gallien, besuchst ein Theater und blickst auf die Ausdehnung des Reiches.",
+      "difficulty": 4,
+      "lessons": [26, 27, 28],
+      "grammarTitles": [
+        "u-Deklination – exercitus, manus und cornu",
+        "Konjunktiv Präsens Aktiv und Passiv",
+        "Konjunktiv Imperfekt Aktiv und Passiv"
+      ],
+      "objectives": [
+        "Vokabular zu Heer, Theater und Herrschaft abrufen",
+        "Formen der u-Deklination sicher bestimmen",
+        "Konjunktiv Präsens und Imperfekt an ihren Bildungssignalen erkennen"
+      ],
+      "concept": {
+        "explanation": "Die u-Deklination hat häufig ein -u- im Stamm, aber ihre Endungen müssen vom Kasus und Numerus her bestimmt werden.",
+        "rule": "Lerne das Genus mit: exercitus ist maskulin, manus feminin und cornu neutrum.",
+        "example": { "latin": "manus, manus f.", "german": "die Hand" },
+        "commonMistake": "manus trotz der Endung -us nicht für maskulin halten."
+      },
+      "challenge": {
+        "optional": true,
+        "title": "Caesars Lageplan",
+        "prompt": "Bestimme u-Deklination und Konjunktivformen in einer kurzen militärischen Meldung."
+      },
+      "questions": [
+        {
+          "id": "q1-exercitus",
+          "type": "choice",
+          "skill": "vocabulary",
+          "prompt": "Was bedeutet exercitus?",
+          "answer": "das Heer",
+          "options": ["das Heer", "die Legion", "der Angriff", "der Wald"],
+          "explanation": "exercitus, exercitus m. bedeutet das Heer."
+        },
+        {
+          "id": "q2-theatrum",
+          "type": "typed",
+          "skill": "vocabulary",
+          "prompt": "Übersetze theatrum.",
+          "answer": "das Theater",
+          "options": [],
+          "explanation": "theatrum, theatri n. bedeutet das Theater."
+        },
+        {
+          "id": "q3-manus",
+          "type": "choice",
+          "skill": "forms",
+          "prompt": "Welches Genus hat manus in der Bedeutung Hand?",
+          "answer": "Femininum",
+          "options": ["Femininum", "Maskulinum", "Neutrum", "kein Genus"],
+          "explanation": "manus gehört zur u-Deklination, ist aber feminin."
+        },
+        {
+          "id": "q4-konjunktiv",
+          "type": "typed",
+          "skill": "grammar",
+          "prompt": "Welcher Vokal ist bei der a-Konjugation das Zeichen des Konjunktiv Präsens?",
+          "answer": "e",
+          "options": [],
+          "explanation": "Bei der a-Konjugation ersetzt e den Stammvokal a: rogem."
+        }
+      ]
+    },
+    {
+      "id": "m10-republik-pompeji",
+      "title": "Republik bis Pompeji",
+      "story": "Briefe, politische Konflikte und der Untergang Pompejis führen zum Abschluss deiner Reise durch die römische Welt.",
+      "difficulty": 4,
+      "lessons": [29, 30, 31],
+      "grammarTitles": [
+        "Ablativus absolutus",
+        "Gerundium und Gerundivum",
+        "PFA und Infinitiv Futur Aktiv",
+        "Partizipien Überblick"
+      ],
+      "objectives": [
+        "Spätes Buchvokabular in gemischten Wiederholungen sichern",
+        "Deponentien trotz passiver Form aktiv übersetzen",
+        "Komplexe Partizipialkonstruktionen schrittweise auflösen"
+      ],
+      "concept": {
+        "explanation": "Deponentien besitzen passive Formen, werden aber aktiv übersetzt. Ihre Stammformen zeigen diese Besonderheit deutlich.",
+        "rule": "Bei oblivisci, proficisci, tueri und ingredi nicht automatisch eine passive deutsche Form bilden.",
+        "example": { "latin": "proficiscitur", "german": "er oder sie bricht auf" },
+        "commonMistake": "Eine passive lateinische Endung bei einem Deponens als deutsches Passiv wiederzugeben."
+      },
+      "challenge": {
+        "optional": true,
+        "title": "Pompeji-Finale",
+        "prompt": "Übersetze einen kurzen Abschlusstext mit Deponens und Partizip und erkläre deine Übersetzungsschritte."
+      },
+      "questions": [
+        {
+          "id": "q1-epistula",
+          "type": "choice",
+          "skill": "vocabulary",
+          "prompt": "Was bedeutet epistula?",
+          "answer": "der Brief",
+          "options": ["der Brief", "der Buchstabe", "das Gebäude", "die Rettung"],
+          "explanation": "epistula, epistulae f. bedeutet der Brief."
+        },
+        {
+          "id": "q2-oblivisci",
+          "type": "typed",
+          "skill": "vocabulary",
+          "prompt": "Übersetze oblivisci.",
+          "answer": "vergessen",
+          "options": [],
+          "explanation": "oblivisci ist ein Deponens und bedeutet vergessen."
+        },
+        {
+          "id": "q3-deponens",
+          "type": "choice",
+          "skill": "grammar",
+          "prompt": "Wie wird ein Deponens im Deutschen grundsätzlich übersetzt?",
+          "answer": "aktiv",
+          "options": ["aktiv", "immer passiv", "nur als Infinitiv", "ohne Verb"],
+          "explanation": "Deponentien haben passive Formen, aber aktive Bedeutung."
+        },
+        {
+          "id": "q4-fieri",
+          "type": "typed",
+          "skill": "vocabulary",
+          "prompt": "Nenne eine Grundbedeutung von fieri.",
+          "answer": "werden",
+          "options": [],
+          "explanation": "fieri bedeutet werden, entstehen, geschehen oder gemacht werden."
+        }
+      ]
+    }
+  ]
+}

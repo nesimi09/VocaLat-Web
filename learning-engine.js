@@ -48,6 +48,15 @@ export function shuffledUniqueMeanings(entry, entries, random = Math.random) {
   return shuffle([entry.deutsch, ...distractors], random);
 }
 
+/** Selects the exact book-ordered pool for a free test across one or more lessons. */
+export function selectPracticeVocabulary(entries, selectedLessons = "all") {
+  if (!Array.isArray(entries)) return [];
+  if (selectedLessons === "all") return [...entries];
+  if (!Array.isArray(selectedLessons) || selectedLessons.length === 0) return [];
+  const lessons = new Set(selectedLessons.map(String));
+  return entries.filter(entry => lessons.has(String(entry?.lektion)));
+}
+
 export function answerOptionState(choice, answer, selectedChoice, answerRecorded) {
   if (!answerRecorded) return "idle";
   if (choice === answer) return "correct";

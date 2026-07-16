@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { analyzeBookText, answerMatches, answerOptionState, shuffledUniqueMeanings } from "../learning-engine.js";
+import { analyzeBookText, answerMatches, answerOptionState, selectPracticeVocabulary, shuffledUniqueMeanings } from "../learning-engine.js";
 import { cleanOcrText } from "../ocr.js";
 
 const vocabulary = [
@@ -34,6 +34,15 @@ test("answer colors leave neutral choices unchanged", () => {
   assert.equal(answerOptionState("falsch", "richtig", "falsch", true), "wrong");
   assert.equal(answerOptionState("neutral", "richtig", "falsch", true), "idle");
   assert.equal(answerOptionState("richtig", "richtig", null, false), "idle");
+});
+
+test("practice vocabulary combines exactly the selected lessons", () => {
+  assert.deepEqual(selectPracticeVocabulary(vocabulary, "all"), vocabulary);
+  assert.deepEqual(selectPracticeVocabulary(vocabulary, [1, "3"]), [vocabulary[0], vocabulary[2]]);
+  assert.deepEqual(selectPracticeVocabulary(vocabulary, [3, 99, 3]), [vocabulary[2]]);
+  assert.deepEqual(selectPracticeVocabulary(vocabulary, []), []);
+  assert.deepEqual(selectPracticeVocabulary(vocabulary, null), []);
+  assert.deepEqual(selectPracticeVocabulary(null, "all"), []);
 });
 
 test("book analysis resolves phrases and fails closed for unknown words", () => {

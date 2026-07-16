@@ -1,10 +1,14 @@
-const CACHE = "vocalat-web-shell-v7";
-const RUNTIME_CACHE = "vocalat-web-runtime-v7";
+const CACHE = "vocalat-web-shell-v9";
+const RUNTIME_CACHE = "vocalat-web-runtime-v9";
 const ASSETS = [
   "./",
   "./index.html",
   "./styles.css",
   "./app.js",
+  "./course-engine.js",
+  "./course-access.js",
+  "./grammar-order.js",
+  "./payment.js",
   "./learning-engine.js",
   "./document-analysis.js",
   "./morphology.js",
@@ -14,6 +18,7 @@ const ASSETS = [
   "./assets/icon-512.png",
   "./data/vocabulary.json",
   "./data/grammar.json",
+  "./data/course.json",
   "./data/fallback-lexicon.json",
   "./data/translation-memory.json",
   "./vendor/tesseract/tesseract.min.js",
@@ -26,6 +31,14 @@ self.addEventListener("fetch", event => {
   if (event.request.method !== "GET") return;
   const requestUrl = new URL(event.request.url);
   if (requestUrl.origin !== self.location.origin) return;
+  if (requestUrl.pathname.endsWith("/data/course-access.json")) {
+    event.respondWith(fetch(new Request(event.request, { cache: "no-store" })).catch(() => new Response("", { status: 503, statusText: "Access manifest unavailable" })));
+    return;
+  }
+  if (requestUrl.pathname.endsWith("/data/payment.json")) {
+    event.respondWith(fetch(new Request(event.request, { cache: "no-store" })).catch(() => new Response("", { status: 503, statusText: "Payment config unavailable" })));
+    return;
+  }
   event.respondWith(caches.match(event.request).then(cached => cached || fetch(event.request).then(response => {
     if (response.ok) {
       const copy = response.clone();

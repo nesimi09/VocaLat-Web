@@ -1,0 +1,11 @@
+{
+  "schemaVersion": 1,
+  "enabled": false,
+  "environment": "sandbox",
+  "currency": "EUR",
+  "amount": "4.99",
+  "billingInterval": "MONTH",
+  "billingIntervalCount": 1,
+  "clientId": "",
+  "planId": ""
+}

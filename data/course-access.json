@@ -1,0 +1,49 @@
+{
+  "schemaVersion": 1,
+  "revision": 1,
+  "active": true,
+  "records": [
+    {
+      "id": "course-0001",
+      "accessDigest": "54666788564156cf0f462c8a3ec014d431bb01fc4cb8172d4a148f30c6136578",
+      "sessionVerifier": "c2f3de07b84906fe172a309ca2914bf2f0a8161dfefcf4905ddc0338d8c3401f",
+      "active": true,
+      "revision": 1
+    },
+    {
+      "id": "course-0002",
+      "accessDigest": "f80b41c2826743c61ea73494e5abe74bf07d23cc54f52365f7f62e86f5525709",
+      "sessionVerifier": "6f02e1acfcc2bcc2beab37288814ed462a7ac46d740aced00649fcdf152fcc60",
+      "active": true,
+      "revision": 1
+    },
+    {
+      "id": "course-0003",
+      "accessDigest": "c68c81f3a0cc536a674249d8a7b0abc1bb7f7205ebd26badd36778573ceec980",
+      "sessionVerifier": "064ce1eeb72c266b9fe2a1b2311f4f53b67808ee6b834a7cd818b76a0faf872f",
+      "active": true,
+      "revision": 1
+    },
+    {
+      "id": "course-0004",
+      "accessDigest": "b2242315b9452567e6d5398dd85c35ab296d900e851f7fd2caf14e8f17fe8538",
+      "sessionVerifier": "b2723f07ef7ecf0f3fb60be53b0b9862bb9ebe1f7e77f05f0d87486fadbff188",
+      "active": true,
+      "revision": 1
+    },
+    {
+      "id": "course-0005",
+      "accessDigest": "b81badd50388d00c2eacd5f141ed27991cf4e9ea74789be8a1c25158a9c36261",
+      "sessionVerifier": "27f5fbb1d0c6f636dd2cf3aa7b5b7cb40c597014fc7c157d10ec521c21ecd7cb",
+      "active": true,
+      "revision": 1
+    },
+    {
+      "id": "course-0006",
+      "accessDigest": "2993bea7b34c12bab09f4c83cf6596b3da65197478fd318566468ffe0cba36b0",
+      "sessionVerifier": "53b809103d2d983cb9e711d52c7dc2c662eef3b97f68a00117a95a851fe097e0",
+      "active": true,
+      "revision": 1
+    }
+  ]
+}

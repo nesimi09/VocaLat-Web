@@ -5,6 +5,7 @@ import { fileURLToPath } from "node:url";
 import { dirname, resolve } from "node:path";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
+const appSource = readFileSync(resolve(root, "app.js"), "utf8");
 const serviceWorkerSource = readFileSync(resolve(root, "service-worker.js"), "utf8");
 const assetsBlock = serviceWorkerSource.match(/const ASSETS = \[([\s\S]*?)\];/)?.[1] || "";
 const shellAssets = [...assetsBlock.matchAll(/"\.\/([^"\n]*)"/g)].map(match => match[1]).filter(Boolean);
@@ -22,6 +23,23 @@ const largeRuntimeAssets = [
 test("every service-worker shell asset exists", () => {
   assert.ok(shellAssets.length >= 10);
   for (const asset of shellAssets) assert.ok(statSync(resolve(root, asset)).isFile(), `${asset} fehlt`);
+  for (const courseAsset of ["course-engine.js", "course-access.js", "grammar-order.js", "payment.js", "data/course.json"]) {
+    assert.equal(shellAssets.includes(courseAsset), true, `${courseAsset} muss zum Offline-App-Rahmen gehören`);
+  }
+});
+
+test("the revocable access manifest is always fetched from the network and fails closed", () => {
+  assert.equal(shellAssets.includes("data/course-access.json"), false);
+  assert.match(serviceWorkerSource, /pathname\.endsWith\("\/data\/course-access\.json"\)/);
+  assert.match(serviceWorkerSource, /cache:\s*"no-store"/);
+  assert.match(serviceWorkerSource, /status:\s*503/);
+});
+
+test("the PayPal sandbox config is never served from an offline cache", () => {
+  assert.equal(shellAssets.includes("data/payment.json"), false);
+  assert.match(appSource, /fetch\("data\/payment\.json", \{ cache: "no-store" \}\)/);
+  assert.match(serviceWorkerSource, /pathname\.endsWith\("\/data\/payment\.json"\)/);
+  assert.match(serviceWorkerSource, /statusText:\s*"Payment config unavailable"/);
 });
 
 test("large local OCR and morphology assets use the lazy runtime cache", () => {
@@ -62,6 +80,10 @@ test("web progress is session-only and legacy permanent data is removed", () => 
   assert.match(source, /sessionStorage\.getItem\("vocalat-session-progress"\)/);
   assert.match(source, /sessionStorage\.setItem\("vocalat-session-progress"/);
   assert.match(source, /localStorage\.removeItem\("vocalat-progress"\)/);
+  assert.match(source, /sessionStorage\.getItem\(COURSE_PROGRESS_KEY\)/);
+  assert.match(source, /sessionStorage\.setItem\(COURSE_PROGRESS_KEY/);
+  assert.match(source, /sessionStorage\.getItem\(COURSE_ACCESS_KEY\)/);
+  assert.match(source, /sessionStorage\.setItem\(COURSE_ACCESS_KEY/);
   assert.doesNotMatch(source, /localStorage\.setItem/);
 });
 
