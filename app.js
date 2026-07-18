@@ -7,6 +7,7 @@ import { buildGrammarPractice } from "./grammar-practice.js";
 import { extractLatinDocument } from "./document-analysis.js";
 import { analyzeLatinMorphology, prepareMorphology } from "./morphology.js";
 import { recognizeLatinText, validateOcrImage } from "./ocr.js";
+import { requestLocalModelTranslation } from "./local-model-client.js";
 
 const NAV = [
   { id: "kurs", label: "Kurs", icon: "course" },
@@ -43,9 +44,9 @@ const state = {
   practiceLessons: "all", practicePickerOpen: false, mode: "typed", practiceSet: [], questionIndex: 0,
   practiceAnswered: 0, practiceCorrect: 0, practiceComplete: false,
   revealed: false, selectedChoice: null, feedback: null, answerRecorded: false, typedAnswer: "",
-  grammarPracticeCategory: null, grammarPracticeRound: [], grammarPracticeIndex: 0,
+  grammarPracticeCategory: null, grammarPracticeMaxLesson: 15, grammarPracticeRound: [], grammarPracticeIndex: 0,
   grammarPracticeSelected: null, grammarPracticeRecorded: false, grammarPracticeCorrect: 0, grammarPracticeComplete: false,
-  translationText: "", translationRawText: "", translationImage: null, translationImageUrl: null,
+  translationText: "", translationRawText: "", translationImage: null, translationImageUrl: null, translationUsesImage: false,
   translationBusy: false, translationProgress: 0, translationStatus: "", translationError: "",
   translationConfidence: null, translationAnalysis: null,
   translationMorphology: new Map(),
@@ -714,7 +715,7 @@ function renderTranslate() {
         <span class="upload-icon" aria-hidden="true">▧</span>
         <strong>${state.translationImage ? "Anderes Bild auswählen" : "Bild auswählen"}</strong>
       </label>
-      <input class="sr-only" id="latin-image" type="file" accept="image/jpeg,image/png,image/webp" ${state.translationBusy ? "disabled" : ""}>
+      <input class="sr-only" id="latin-image" type="file" accept="image/jpeg,image/png,image/webp,image/heic,image/heif,.heic,.heif" ${state.translationBusy ? "disabled" : ""}>
       ${preview}
       ${ocrStatus}
       <details class="text-review">
@@ -766,7 +767,7 @@ function renderTranslationResults() {
     <section class="card final-translation">
       <div class="card-top"><h2>Übersetzung</h2><span class="coverage-badge${analysis.translationReliable || analysis.translationVerified ? "" : " needs-review"}">${translationBadge}</span></div>
       <div class="translated-lines">${translationLines || `<p>Keine Übersetzung möglich.</p>`}</div>
-      ${analysis.unresolvedWords ? `<small>${analysis.unresolvedWords} ${analysis.unresolvedWords === 1 ? "Stelle konnte" : "Stellen konnten"} nicht sicher aufgelöst werden.</small>` : ""}
+      ${analysis.unresolvedWords && !analysis.modelAssisted ? `<small>${analysis.unresolvedWords} ${analysis.unresolvedWords === 1 ? "Stelle konnte" : "Stellen konnten"} nicht sicher aufgelöst werden.</small>` : ""}
     </section>
     <details class="card analysis-details">
       <summary>Text und Formen prüfen</summary>
@@ -780,7 +781,7 @@ function renderTranslationResults() {
         <h3>Grammatik</h3>
         ${grammar}
         ${state.translationRawText && state.translationRawText.trim() !== state.translationText.trim() ? `<details class="raw-ocr"><summary>Vollständigen OCR-Text anzeigen</summary><pre>${escapeHtml(state.translationRawText)}</pre></details>` : ""}
-        <p class="source-note">Vokabeln aus Bildfußnoten und dem Schulbuch haben Vorrang. Fehlende Bedeutungen stammen aus dem mitgelieferten FreeDict-Wörterbuch (GPL-3.0-or-later).</p>
+        <p class="source-note">Vokabeln aus Bildfußnoten und dem Schulbuch haben Vorrang. Fehlende Bedeutungen stammen aus dem mitgelieferten FreeDict-Wörterbuch (GPL-3.0-or-later).${analysis.modelAssisted ? ` Die deutsche Satzfassung wurde vom lokalen Übersetzungsmodell erstellt.` : ""}</p>
       </div>
     </details>
   </section>`;
@@ -816,9 +817,24 @@ async function runOcr() {
     state.translationAnalysis = null;
     renderTranslate();
     const morphologyReady = prepareMorphology().catch(() => null);
-    const result = await recognizeLatinText(file, updateOcrProgress);
+    let result;
+    let browserOcrError = null;
+    try {
+      result = await recognizeLatinText(file, updateOcrProgress);
+    } catch (error) {
+      browserOcrError = error;
+      result = { text: "", confidence: null };
+    }
     if (job !== state.translationJob || file !== state.translationImage) return;
-    if (!result.text.trim()) throw new Error("Auf dem Bild wurde kein lateinischer Text erkannt.");
+    if (!result.text.trim()) {
+      state.translationStatus = "Bildtext wird lokal gelesen …";
+      updateOcrProgress({ status: "translating locally", progress: .985 });
+      const local = await requestLocalModelTranslation({ latinText: "", imageFile: file, analysis: { matches: [] } });
+      if (job !== state.translationJob) return;
+      if (!local?.normalizedLatin) throw browserOcrError || new Error("Auf dem Bild wurde kein lateinischer Text erkannt.");
+      await applyDirectImageTranslation(local, job);
+      return;
+    }
     state.translationRawText = result.text;
     state.translationConfidence = result.confidence;
     state.translationStatus = "Formen und OCR-Fehler werden geprüft …";
@@ -830,7 +846,7 @@ async function runOcr() {
     state.translationDocument = extractLatinDocument(result.text, state.translationMorphology);
     state.translationText = state.translationDocument.latinText;
     state.translationGlossary = state.translationDocument.glossary;
-    applyBookAnalysis();
+    await applyBookAnalysis(job);
   } catch (error) {
     if (job === state.translationJob) state.translationError = friendlyOcrError(error);
   } finally {
@@ -842,6 +858,22 @@ async function runOcr() {
   }
 }
 
+async function applyDirectImageTranslation(local, job) {
+  state.translationRawText = local.normalizedLatin;
+  state.translationText = local.normalizedLatin;
+  state.translationMorphology = await analyzeLatinMorphology(local.normalizedLatin).catch(() => new Map());
+  if (job !== state.translationJob) return;
+  state.translationDocument = extractLatinDocument(local.normalizedLatin, state.translationMorphology);
+  state.translationText = state.translationDocument.latinText || local.normalizedLatin;
+  state.translationGlossary = [];
+  const analysis = analyzeBookText(state.translationText, state.vocabulary, state.grammar, null, state.fallbackVocabulary, state.translationMorphology, state.translationMemory);
+  // The server translated exactly normalizedLatin. Keep that same source text
+  // visible instead of applying another client-only OCR rewrite afterwards.
+  analysis.correctedText = local.normalizedLatin;
+  state.translationAnalysis = analysis;
+  attachModelTranslation(analysis, local);
+}
+
 function updateOcrProgress(message) {
   const labels = {
     "loading tesseract core": "Lokaler OCR-Kern wird geladen …",
@@ -849,7 +881,8 @@ function updateOcrProgress(message) {
     "loading language traineddata": "Lateinisches Sprachmodell wird geladen …",
     "initializing api": "Texterkennung wird vorbereitet …",
     "recognizing text": "Lateinischer Text wird erkannt …",
-    "checking morphology": "Formen und OCR-Fehler werden geprüft …"
+    "checking morphology": "Formen und OCR-Fehler werden geprüft …",
+    "translating locally": "Deutsche Übersetzung wird formuliert …"
   };
   state.translationStatus = labels[message.status] || "Texterkennung läuft …";
   state.translationProgress = Number.isFinite(message.progress) ? message.progress : state.translationProgress;
@@ -888,7 +921,7 @@ async function runBookAnalysis() {
     state.translationRawText = text;
     state.translationText = state.translationDocument.latinText;
     state.translationGlossary = state.translationDocument.glossary;
-    applyBookAnalysis();
+    await applyBookAnalysis(job);
   } finally {
     if (job !== state.translationJob) return;
     state.translationBusy = false;
@@ -901,9 +934,52 @@ async function runBookAnalysis() {
   }
 }
 
-function applyBookAnalysis() {
-  state.translationAnalysis = analyzeBookText(state.translationText, state.vocabulary, state.grammar, null, [...state.translationGlossary, ...state.fallbackVocabulary], state.translationMorphology, state.translationMemory);
-  if (state.translationAnalysis.correctedText) state.translationText = state.translationAnalysis.correctedText;
+async function applyBookAnalysis(job = state.translationJob) {
+  let analysis = analyzeBookText(state.translationText, state.vocabulary, state.grammar, null, [...state.translationGlossary, ...state.fallbackVocabulary], state.translationMorphology, state.translationMemory);
+  state.translationAnalysis = analysis;
+  if (analysis.correctedText) state.translationText = analysis.correctedText;
+  state.translationStatus = "Deutsche Übersetzung wird formuliert …";
+  updateOcrProgress({ status: "translating locally", progress: .985 });
+  const local = await requestLocalModelTranslation({
+    latinText: state.translationText,
+    rawOcrText: state.translationRawText,
+    imageFile: state.translationUsesImage ? state.translationImage : null,
+    analysis
+  });
+  if (job !== state.translationJob || !local) return;
+  if (isUsefulModelLatin(local.normalizedLatin)) {
+    state.translationText = local.normalizedLatin;
+    state.translationMorphology = await analyzeLatinMorphology(local.normalizedLatin).catch(() => new Map());
+    if (job !== state.translationJob) return;
+    state.translationDocument = {
+      ...(state.translationDocument || {}),
+      latinText: local.normalizedLatin,
+      rawText: state.translationRawText || local.normalizedLatin
+    };
+    analysis = analyzeBookText(local.normalizedLatin, state.vocabulary, state.grammar, null, [...state.translationGlossary, ...state.fallbackVocabulary], state.translationMorphology, state.translationMemory);
+    // Do not let a second browser-side OCR heuristic change the source after
+    // the model has translated it. This keeps displayed Latin and German in sync.
+    analysis.correctedText = local.normalizedLatin;
+    state.translationAnalysis = analysis;
+  }
+  attachModelTranslation(analysis, local);
+}
+
+function attachModelTranslation(analysis, local) {
+  analysis.ruleTranslation = analysis.translation;
+  analysis.translation = local.translation;
+  analysis.translationReliable = local.confidence >= .72;
+  analysis.translationVerified = false;
+  analysis.modelAssisted = true;
+  analysis.modelName = local.model;
+  analysis.modelConfidence = local.confidence;
+  analysis.modelWarnings = local.warnings;
+}
+
+function isUsefulModelLatin(value) {
+  const text = String(value || "").trim();
+  const words = text.match(/[A-Za-zÀ-ž]+/g) || [];
+  return text.length <= 24_000 && words.length >= 2;
 }
 
 function selectTranslationImage(file) {
@@ -913,6 +989,7 @@ function selectTranslationImage(file) {
     if (state.translationImageUrl) URL.revokeObjectURL(state.translationImageUrl);
     state.translationImage = file;
     state.translationImageUrl = URL.createObjectURL(file);
+    state.translationUsesImage = true;
     state.translationText = "";
     state.translationRawText = "";
     state.translationError = "";
@@ -933,17 +1010,14 @@ function removeTranslationImage() {
   if (state.translationImageUrl) URL.revokeObjectURL(state.translationImageUrl);
   state.translationImage = null;
   state.translationImageUrl = null;
+  state.translationUsesImage = false;
   state.translationConfidence = null;
   state.translationError = "";
   renderTranslate();
 }
 
 function startGrammarPractice(category = null) {
-  let round = buildGrammarPractice(state.grammar, { category, limit: 10 });
-  if (!round.length && category) {
-    category = null;
-    round = buildGrammarPractice(state.grammar, { limit: 10 });
-  }
+  const round = buildGrammarPractice(state.grammar, { category, maxLesson: state.grammarPracticeMaxLesson, limit: 10 });
   state.grammarPracticeCategory = category;
   state.grammarPracticeRound = round;
   state.grammarPracticeIndex = 0;
@@ -975,8 +1049,8 @@ function renderGrammarPractice() {
     : "";
   app.innerHTML = `<div class="grammar-practice">
     <button class="text-button" data-grammar-practice-back type="button">← Zur Grammatik</button>
-    <section class="grammar-practice-progress"><div class="card-top"><span>${category ? escapeHtml(category.title) : "Gemischte Grammatik"}</span><strong>${state.grammarPracticeIndex + 1}/${round.length}</strong></div><div class="progress-track" role="progressbar" aria-label="Übungsfortschritt" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${progress}"><div class="progress-fill" style="width:${progress}%"></div></div></section>
-    <section class="card grammar-question-card"><span class="course-skill-tag">${escapeHtml(question.sectionTitle)}</span><h2>${escapeHtml(question.prompt)}</h2><div class="grammar-choice-list">${question.options.map(option => { const optionState = answerOptionState(option, question.answer, state.grammarPracticeSelected, state.grammarPracticeRecorded); return `<button class="grammar-choice ${optionState}" data-grammar-choice="${escapeHtml(option)}" type="button" ${state.grammarPracticeRecorded ? "disabled" : ""}><span>${escapeHtml(option)}</span>${optionState === "correct" ? `<strong aria-hidden="true">✓</strong>` : optionState === "wrong" ? `<strong aria-hidden="true">✕</strong>` : ""}</button>`; }).join("")}</div>${feedback}</section>
+    <section class="grammar-practice-progress"><div class="card-top"><span>${category ? escapeHtml(category.title) : "Gemischte Grammatik"} · bis Lektion ${state.grammarPracticeMaxLesson}</span><strong>${state.grammarPracticeIndex + 1}/${round.length}</strong></div><div class="progress-track" role="progressbar" aria-label="Übungsfortschritt" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${progress}"><div class="progress-fill" style="width:${progress}%"></div></div></section>
+    <section class="card grammar-question-card"><span class="course-skill-tag">${escapeHtml(question.sectionTitle)} · ab Lektion ${question.lesson}</span><h2>${escapeHtml(question.prompt)}</h2><div class="grammar-choice-list">${question.options.map(option => { const optionState = answerOptionState(option, question.answer, state.grammarPracticeSelected, state.grammarPracticeRecorded); return `<button class="grammar-choice ${optionState}" data-grammar-choice="${escapeHtml(option)}" type="button" ${state.grammarPracticeRecorded ? "disabled" : ""}><span>${escapeHtml(option)}</span>${optionState === "correct" ? `<strong aria-hidden="true">✓</strong>` : optionState === "wrong" ? `<strong aria-hidden="true">✕</strong>` : ""}</button>`; }).join("")}</div>${feedback}</section>
   </div>`;
 }
 
@@ -990,7 +1064,8 @@ function renderGrammar() {
     app.innerHTML = `<div class="detail-header"><button class="back button secondary" data-grammar-back type="button">← Alle Kategorien</button><h2>${escapeHtml(cat.title)}</h2><p class="meta">Verwandte Formen und Regeln stehen direkt nacheinander.</p><button class="button grammar-category-practice" data-grammar-practice="${escapeHtml(cat.id)}" type="button">Diese Grammatik üben</button></div><div class="grid two">${items.map(({s,i}, position) => `<button class="card category-card" data-grammar-section="${i}" type="button"><span class="category-icon grammar-sequence-number">${position + 1}</span><span><h3>${escapeHtml(s.titel)}</h3><small class="meta">${escapeHtml(label(s.typ))}</small></span></button>`).join("") || `<div class="empty card">Keine Einträge.</div>`}</div>`;
     return;
   }
-  app.innerHTML = `<section class="grammar-practice-entry"><div><h2>Grammatik üben</h2><p>10 Aufgaben zu Formen, Deklinationen und Satzlehre.</p></div><button class="button" data-grammar-practice="all" type="button">Übung starten</button></section><div class="section-heading"><h2>Nachschlagen</h2></div><div class="grid two">${CATEGORIES.map(cat => { const count = sections.filter(s => categoryFor(s) === cat.id).length; return count ? `<button class="card category-card" data-category="${cat.id}" type="button"><span class="category-icon">${cat.icon}</span><span><h3>${escapeHtml(cat.title)}</h3><small class="meta">${count} Abschnitte</small></span></button>` : ""; }).join("")}</div>`;
+  const grammarLessons = Array.from({ length: 31 }, (_, index) => index + 1);
+  app.innerHTML = `<section class="grammar-practice-entry"><div><h2>Grammatik üben</h2><p>Du bekommst nur Aufgaben zu Grammatik, die bis zu deiner Lektion vorkommt.</p></div><label class="grammar-lesson-control"><span>Aktuelle Lektion</span><select class="select" id="grammar-practice-lesson" aria-label="Aktuelle Lektion für Grammatikübungen">${grammarLessons.map(lesson => `<option value="${lesson}" ${Number(lesson) === Number(state.grammarPracticeMaxLesson) ? "selected" : ""}>Lektion ${lesson}</option>`).join("")}</select></label><button class="button" data-grammar-practice="all" type="button">Übung starten</button></section><div class="section-heading"><h2>Nachschlagen</h2></div><div class="grid two">${CATEGORIES.map(cat => { const count = sections.filter(s => categoryFor(s) === cat.id).length; return count ? `<button class="card category-card" data-category="${cat.id}" type="button"><span class="category-icon">${cat.icon}</span><span><h3>${escapeHtml(cat.title)}</h3><small class="meta">${count} Abschnitte</small></span></button>` : ""; }).join("")}</div>`;
 }
 
 function renderGrammarDetail(section) {
@@ -1164,6 +1239,7 @@ document.addEventListener("input", event => {
   if (event.target.id === "course-typed-answer") state.courseTypedAnswer = event.target.value;
   if (event.target.id === "latin-text") {
     state.translationText = event.target.value;
+    state.translationUsesImage = false;
     state.translationRawText = "";
     state.translationAnalysis = null;
     state.translationMorphology = new Map();
@@ -1180,6 +1256,10 @@ document.addEventListener("input", event => {
 document.addEventListener("change", event => {
   if (event.target.id === "lesson-filter") { state.lesson = event.target.value; render(); }
   if (event.target.id === "favorite-filter") { state.favoritesOnly = event.target.checked; render(); }
+  if (event.target.id === "grammar-practice-lesson") {
+    state.grammarPracticeMaxLesson = Number(event.target.value);
+    announce(`Grammatikübungen sind jetzt auf Lektion ${state.grammarPracticeMaxLesson} begrenzt.`);
+  }
   if (event.target.matches?.("[data-practice-lesson]")) {
     const changedLesson = event.target.value;
     const selected = new Set(selectedPracticeLessons());

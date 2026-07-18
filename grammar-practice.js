@@ -4,11 +4,82 @@ const PERSONS = ["1. Person Singular", "2. Person Singular", "3. Person Singular
 const DESCRIPTOR_KEYS = ["person", "kasus", "form", "stufe", "partizip", "verb"];
 const GENDERS = ["Maskulinum", "Femininum", "Neutrum"];
 
-export function buildGrammarPractice(sections, { category = null, limit = 10, random = Math.random } = {}) {
+// Earliest lesson in which each topic is used by the guided course. Keeping
+// this beside the generator makes the limit apply to every practice entry.
+const INTRODUCTION_LESSONS = new Map([
+  ["Präsens von esse, posse und ire", 1],
+  ["Imperfekt Aktiv", 4],
+  ["Imperfekt von esse, posse und ire", 4],
+  ["Futur I Aktiv", 11],
+  ["Futur I von esse, posse und ire", 11],
+  ["Perfekt von esse, posse und ire", 11],
+  ["Plusquamperfekt von esse, posse und ire", 14],
+  ["Futur II von esse, posse und ire", 14],
+  ["Perfekt, Plusquamperfekt und Futur II Aktiv", 8],
+  ["Passiv: Präsens, Imperfekt und Futur I", 17],
+  ["Passiv: Perfekt, Plusquamperfekt und Futur II", 14],
+  ["Relativpronomen qui, quae, quod", 23],
+  ["Demonstrativpronomen iste, ista, istud", 11],
+  ["Adverbien der i-Deklination", 17],
+  ["PPA und seine Übersetzung", 20],
+  ["PPP Bildung und Verwendung", 14],
+  ["Partizipien Überblick", 14],
+  ["PFA und Infinitiv Futur Aktiv", 29],
+  ["e-Deklination – res, rei f.", 11],
+  ["velle", 17],
+  ["Konjunktiv Imperfekt Aktiv und Passiv", 17],
+  ["Konjunktiv Präsens Aktiv und Passiv", 26],
+  ["Konjunktiv Perfekt Aktiv und Passiv", 26],
+  ["Konjunktiv Plusquamperfekt Passiv", 29],
+  ["Konjunktiv Plusquamperfekt Aktiv", 29],
+  ["AcI und NcI", 20],
+  ["Ablativus absolutus", 29],
+  ["Gerundium und Gerundivum", 29],
+  ["Steigerung von Adjektiven und Adverbien", 23],
+  ["u-Deklination – exercitus, manus und cornu", 26],
+  ["a-Deklination – serva, servae f.", 1],
+  ["o-Deklination – avus und bellum", 1],
+  ["Konsonantische Deklination – clamor, mater und litus", 1],
+  ["i-Deklination – civis, navis und mare", 8]
+]);
+
+// Some overview sections contain material that is introduced across several
+// lessons. These overrides keep the gate attached to the individual question
+// instead of treating every row as if it began with the section itself.
+const ROW_INTRODUCTION_LESSONS = new Map([
+  ["Partizipien Überblick", new Map([
+    ["PPA", 20],
+    ["PPP", 14],
+    ["PFA", 29]
+  ])]
+]);
+
+const ROW_SAFE_DISTRACTORS = new Map([
+  ["Partizipien Überblick", new Map([
+    ["zeitverhaeltnis", ["ohne festes Zeitverhältnis", "wiederholt"]],
+    ["genus_verbi", ["reflexiv", "unpersönlich"]],
+    ["beispiel", ["laudare", "laudat"]],
+    ["deutsch", ["loben", "er lobt"]]
+  ])]
+]);
+
+export function grammarIntroductionLesson(section) {
+  const explicit = Number(section?.lektion ?? section?.lesson);
+  if (Number.isFinite(explicit) && explicit > 0) return explicit;
+  return INTRODUCTION_LESSONS.get(section?.titel) || 31;
+}
+
+export function buildGrammarPractice(sections, { category = null, maxLesson = 31, limit = 10, random = Math.random } = {}) {
+  const lessonLimit = Number(maxLesson);
+  const effectiveLessonLimit = Number.isFinite(lessonLimit) ? lessonLimit : 31;
   const allowed = Array.isArray(sections)
-    ? sections.filter(section => !category || grammarCategory(section) === category)
+    ? sections.filter(section =>
+      (!category || grammarCategory(section) === category)
+      && grammarIntroductionLesson(section) <= effectiveLessonLimit
+    )
     : [];
-  const bank = buildGrammarQuestionBank(allowed);
+  const bank = buildGrammarQuestionBank(allowed)
+    .filter(question => question.lesson <= effectiveLessonLimit);
   return shuffle(bank, random).slice(0, Math.max(1, limit)).map(question => ({
     ...question,
     options: shuffle(question.options, random)
@@ -36,15 +107,17 @@ function questionsFromRows(section, sectionIndex) {
     .filter(key => key !== descriptorKey && rows.filter(row => scalar(row[key])).length >= 2);
   const questions = [];
   for (const key of valueKeys) {
-    const pool = unique(rows.map(row => scalar(row[key])).filter(Boolean));
-    if (pool.length < 3) continue;
     for (const [rowIndex, row] of rows.entries()) {
       const answer = scalar(row[key]);
       const descriptor = scalar(row[descriptorKey]);
       if (!answer || !descriptor) continue;
+      const lesson = rowIntroductionLesson(section, row);
+      const pool = rowAnswerPool(section, rows, key, lesson);
+      if (pool.length < 3) continue;
       questions.push(makeQuestion({
         id: `${sectionIndex}-forms-${key}-${rowIndex}`,
         section,
+        lesson,
         prompt: rowPrompt(section.titel, descriptorKey, descriptor, key),
         answer,
         pool,
@@ -139,17 +212,34 @@ function questionsFromRules(sections) {
   return questions;
 }
 
-function makeQuestion({ id, section, prompt, answer, pool, explanation }) {
+function makeQuestion({ id, section, lesson = grammarIntroductionLesson(section), prompt, answer, pool, explanation }) {
   const distractors = unique(pool).filter(value => value !== answer).slice(0, 3);
   return {
     id,
     category: grammarCategory(section),
+    lesson,
     sectionTitle: section.titel,
     prompt,
     answer: scalar(answer),
     options: unique([scalar(answer), ...distractors]),
     explanation
   };
+}
+
+function rowIntroductionLesson(section, row) {
+  const explicit = Number(row?.lektion ?? row?.lesson);
+  if (Number.isFinite(explicit) && explicit > 0) return explicit;
+  const subtopic = scalar(row?.partizip);
+  return ROW_INTRODUCTION_LESSONS.get(section?.titel)?.get(subtopic)
+    || grammarIntroductionLesson(section);
+}
+
+function rowAnswerPool(section, rows, key, lesson) {
+  const eligibleAnswers = rows
+    .filter(candidate => rowIntroductionLesson(section, candidate) <= lesson)
+    .map(candidate => scalar(candidate[key]));
+  const safeDistractors = ROW_SAFE_DISTRACTORS.get(section?.titel)?.get(key) || [];
+  return unique([...eligibleAnswers, ...safeDistractors]);
 }
 
 function rowPrompt(title, descriptorKey, descriptor, valueKey) {

@@ -118,3 +118,12 @@ test("session-only implementation details are not shown to learners", () => {
   assert.doesNotMatch(app, /Kurspakete|\bPaket(?:e|en)?\b/);
   assert.match(app, /Lerneinheiten/);
 });
+
+test("grammar practice is limited by the learner's current lesson", () => {
+  assert.match(app, /id="grammar-practice-lesson"/);
+  assert.match(app, /grammarPracticeMaxLesson/);
+  assert.match(app, /maxLesson: state\.grammarPracticeMaxLesson/);
+  assert.match(app, /Array\.from\(\{ length: 31 \}/);
+  assert.match(app, /nur Aufgaben zu Grammatik, die bis zu deiner Lektion vorkommt/);
+  assert.doesNotMatch(app, /if \(!round\.length && category\)/);
+});

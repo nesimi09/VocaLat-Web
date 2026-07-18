@@ -340,6 +340,8 @@ button.card:hover { transform: translateY(-2px); border-color: rgba(168,120,51,.
 .grammar-practice-entry { display: flex; justify-content: space-between; align-items: center; gap: 20px; padding: 4px 0 24px; border-bottom: 1px solid var(--line); }
 .grammar-practice-entry h2 { margin: 0 0 5px; font-size: 1.25rem; }
 .grammar-practice-entry p { margin: 0; color: var(--muted); }
+.grammar-lesson-control { display: grid; gap: 5px; min-width: 150px; }
+.grammar-lesson-control > span { color: var(--muted); font-size: .75rem; font-weight: 750; }
 .grammar-category-practice { margin-top: 16px; }
 .grammar-practice { display: grid; gap: 16px; width: min(100%, 720px); margin: 0 auto; }
 .grammar-practice > .text-button { justify-self: start; }

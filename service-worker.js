@@ -1,5 +1,5 @@
-const CACHE = "vocalat-web-shell-v16";
-const RUNTIME_CACHE = "vocalat-web-runtime-v16";
+const CACHE = "vocalat-web-shell-v20";
+const RUNTIME_CACHE = "vocalat-web-runtime-v20";
 const ASSETS = [
   "./",
   "./index.html",
@@ -12,6 +12,7 @@ const ASSETS = [
   "./payment.js",
   "./learning-engine.js",
   "./latin-syntax-translator.js",
+  "./local-model-client.js",
   "./document-analysis.js",
   "./morphology.js",
   "./ocr.js",

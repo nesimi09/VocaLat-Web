@@ -126,7 +126,7 @@ export function analyzeBookText(text, vocabulary, grammarSections, maxLesson = n
 
   return {
     text: String(text).trim(),
-    correctedText: lineAnalyses.map(line => line.matches.map(match => match.canonicalForm || match.token).join(" ")).join("\n"),
+    correctedText: lineAnalyses.map(line => correctedLatinLine(line.source, line.matches)).join("\n"),
     translation: translatedLines.map(line => line.text).filter(Boolean).join("\n"),
     translationReliable,
     verifiedLines: translatedLines.filter(line => line.verified).length,
@@ -140,6 +140,16 @@ export function analyzeBookText(text, vocabulary, grammarSections, maxLesson = n
     draft: matches.map(match => RESOLVED_STATUSES.has(match.status) ? match.entries[0].deutsch : `[${match.token}]`).join(" · "),
     grammar
   };
+}
+
+function correctedLatinLine(source, matches) {
+  const replacements = matches.flatMap(match => {
+    const canonical = match.canonicalForm || match.token;
+    const words = String(canonical).match(LATIN_WORD_PATTERN) || [];
+    return words.length === match.length ? words : String(match.token).match(LATIN_WORD_PATTERN) || [];
+  });
+  let index = 0;
+  return String(source).replace(LATIN_WORD_PATTERN, original => replacements[index++] || original);
 }
 
 function findTranslationMemoryMatch(source, entries) {

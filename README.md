@@ -9,16 +9,19 @@ Responsive Web-Version der VocaLat-iOS-App mit allen Vokabeln, Grammatikabschnit
 - Frei kombinierbare Tests aus einer oder mehreren Lektionen, als Karteikarte, Multiple Choice oder Texteingabe
 - Didaktisch sortierte Grammatik mit zusammenhängenden Formenfolgen, responsiven Tabellen und Vor-/Zurück-Navigation
 - Sitzungsgebundener Lernfortschritt über `sessionStorage`; keine dauerhaften Web-Lerndaten und aktuell kein Login
-- Bild-Upload und vollständig lokal ausgeführte Latein-OCR mit Tesseract.js
-- Automatische Formenprüfung und OCR-Korrektur; Buchvokabeln haben Vorrang, fehlende Bedeutungen kommen aus einem mitgelieferten Latein-Deutsch-Wörterbuch
+- Bild-Upload mit Tesseract.js-Fallback sowie optionaler lokaler Bildprüfung durch Qwen 3.5 Vision
+- Natürliche Latein-Deutsch-Übersetzung mit TranslateGemma und lokaler Gemma-Schlussprüfung; Buchvokabeln haben Vorrang
+- Grammatikübungen lassen sich auf die aktuelle Buchlektion begrenzen, damit spätere Regeln nicht vorweggenommen werden
 - Responsive Navigation für Smartphone, Tablet und Desktop
 - Hell-/Dunkelmodus und installierbare PWA mit Offline-Cache
 
-## Lokale Übersetzungshilfe
+## Übersetzung
 
-Der kleine App-Rahmen und das Zusatzwörterbuch werden bei der PWA-Installation offline gespeichert. Die größeren OCR- und Formendateien lädt die App erst bei der ersten Übersetzung von derselben Website und legt sie anschließend im separaten Runtime-Cache ab. Bild und Text werden nicht an eine externe OCR-, Übersetzungs- oder KI-API gesendet. Besucher der GitHub Page müssen nichts installieren oder manuell herunterladen.
+Der kleine App-Rahmen und das Zusatzwörterbuch werden bei der PWA-Installation offline gespeichert. Die größeren OCR- und Formendateien lädt die App erst bei der ersten Übersetzung von derselben Website und legt sie anschließend im separaten Runtime-Cache ab. Auf einer rein statischen GitHub Page laufen Tesseract.js, Formenprüfung, Buchwörterbuch und der regelbasierte Übersetzer vollständig im Browser.
 
-Nach der Bildauswahl startet die Verarbeitung automatisch. Auf gemischten Arbeitsblättern wird der lateinische Haupttext von Logos, deutschen Einleitungen, Überschriften, Wortzahlen und Fußnoten getrennt; Vokabelhilfen aus dem Bild werden trotzdem als Kontext übernommen. Makron-/Akzentvarianten werden normalisiert, ein fehlender oder verwechselter Buchstabe kann über bekannte Wortformen korrigiert werden, und Flexionsformen werden auf ihre Lemmata zurückgeführt. Die sichtbare Übersetzung bevorzugt immer das Schulbuch. Für fehlende Lemmata steht ein lokal mitgeliefertes FreeDict-Wörterbuch mit 5.484 Einträgen bereit. Fehlende Grammatikhilfen werden lokal aus den erkannten Formen ergänzt; die eingeklappte Detailansicht zeigt Korrekturen, Formen und Regeln.
+Wird die App mit `npm start` betrieben, nutzt sie zusätzlich lokal installierte Ollama-Modelle: Qwen 3.5 Vision liest den lateinischen Haupttext direkt aus dem Bild und gleicht ihn mit der Browser-OCR ab; TranslateGemma formuliert kurze zusammenhängende Satzgruppen; Gemma 3 prüft Satzabdeckung, deutsche Grammatik und die passenden Bedeutungen aus dem Schulbuch. Fehlt ein Wort im Buch, wird das lokale FreeDict-Wörterbuch als nachrangiger Hinweis verwendet. Es wird keine externe OCR- oder Übersetzungs-API aufgerufen. Beim Zugriff über einen Tunnel wird das Bild selbstverständlich an diesen selbst betriebenen VocaLat-Server übertragen.
+
+Nach der Bildauswahl startet die Verarbeitung automatisch. Auf gemischten Arbeitsblättern wird der lateinische Haupttext von Logos, deutschen Einleitungen, Überschriften, Wortzahlen, Randspalten und Fußnoten getrennt; Vokabelhilfen aus dem Bild werden trotzdem als Kontext übernommen. Makron-/Akzentvarianten werden normalisiert, fehlende oder verwechselte Buchstaben werden nur bei morphologisch und syntaktisch plausiblen Formen korrigiert, und Flexionsformen werden auf ihre Lemmata zurückgeführt. Für fehlende Lemmata steht ein lokal mitgeliefertes FreeDict-Wörterbuch mit 5.484 Einträgen bereit. Die eingeklappte Detailansicht zeigt erkannten Text, Formen, Quellen und Grammatikregeln.
 
 Die lokale Referenzbasis enthält selbst formulierte und geprüfte deutsche Übersetzungen von 69 Abschnitten mit insgesamt 965 lateinischen Wörtern aus Hyginus, Caesar, Cicero, Phaedrus, Cornelius Nepos, Seneca, Sallust, Ovid, Livius und dem zusätzlich geprüften 53-Wörter-Arbeitsblatt „Familia avum exspectat“. Der Abgleich funktioniert auch bei fehlenden Satzzeichen und einzelnen ausgelassenen oder verwechselten OCR-Buchstaben. Eine Negation oder ein ganzes fehlendes Wort wird aus Sicherheitsgründen nicht stillschweigend ergänzt. Unbekannte komplexe Sätze werden analysiert, aber nicht mehr als scheinbar sichere Wortsalat-Übersetzung ausgegeben; nur eng begrenzte, getestete einfache Satzmuster erhalten einen ungeprüften Vorschlag.
 
@@ -40,15 +43,23 @@ Tesseract.js 7.0.0, Tesseract.js Core 7.0.0 und das lateinische Tesseract-Sprach
 
 Die Formenprüfung verwendet den TypeScript-Port von Whitaker’s Words 0.1.1 (MIT; ursprüngliche WORDS-Daten frei verwendbar). Das Latein-Deutsch-Zusatzwörterbuch basiert auf FreeDict `lat-deu` 1.0.3 (GPL-3.0-or-later); Quelle, Autoren- und Lizenzdateien liegen unter `vendor/freedict`.
 
-## Lokal starten
+## Mit lokalem Übersetzungsmodell starten
 
-Da die Inhalte als JSON geladen werden, muss die Seite über einen kleinen lokalen Server geöffnet werden:
+Voraussetzung ist ein laufendes [Ollama](https://ollama.com/). Die Modelle werden einmalig lokal geladen:
 
 ```bash
-python3 -m http.server 8080
+ollama pull qwen3.5:9b
+ollama pull translategemma:12b
+ollama pull gemma3:12b
 ```
 
-Danach `http://localhost:8080` öffnen.
+Danach startet der Node-Server App und Übersetzungsendpunkt gemeinsam:
+
+```bash
+npm start
+```
+
+Danach `http://127.0.0.1:8080` öffnen. Andere Modelle oder Ports lassen sich über `OLLAMA_MODEL`, `OLLAMA_TRANSLATION_MODEL`, `OLLAMA_REVIEW_MODEL`, `OLLAMA_URL`, `HOST` und `PORT` festlegen. Fehlt Gemma 3, wird Qwen für die Schlussprüfung verwendet; fehlt TranslateGemma, übernimmt das allgemeine lokale Modell die Übersetzung. Ohne Serverendpunkt bleibt die statische Browserübersetzung verfügbar.
 
 ## Prüfen
 
@@ -56,4 +67,6 @@ Danach `http://localhost:8080` öffnen.
 npm test
 npm run test:corpus
 npm run check
+# bei laufendem npm-start-Server zusätzlich:
+npm run test:model
 ```
