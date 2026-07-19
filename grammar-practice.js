@@ -65,6 +65,37 @@ const ROW_SAFE_DISTRACTORS = new Map([
   ])]
 ]);
 
+const RULE_SUBJECTS = new Map([
+  ["Imperfekt Aktiv", { text: "das Imperfekt Aktiv", plural: false }],
+  ["Futur I Aktiv", { text: "das Futur I Aktiv", plural: false }],
+  ["Perfekt, Plusquamperfekt und Futur II Aktiv", { text: "Perfekt, Plusquamperfekt und Futur II Aktiv", plural: true }],
+  ["Passiv: Perfekt, Plusquamperfekt und Futur II", { text: "die passiven Zeiten Perfekt, Plusquamperfekt und Futur II", plural: true }],
+  ["Adverbien der i-Deklination", { text: "Adverbien der i-Deklination", plural: true }],
+  ["PPP Bildung und Verwendung", { text: "das PPP", plural: false }],
+  ["Partizipien Überblick", { text: "Partizipien", plural: true }],
+  ["PFA und Infinitiv Futur Aktiv", { text: "das PFA und der Infinitiv Futur Aktiv", plural: true }],
+  ["Konjunktiv Plusquamperfekt Passiv", { text: "der Konjunktiv Plusquamperfekt Passiv", plural: false }],
+  ["Konjunktiv Plusquamperfekt Aktiv", { text: "der Konjunktiv Plusquamperfekt Aktiv", plural: false }],
+  ["AcI und NcI", { text: "AcI und NcI", plural: true }],
+  ["Ablativus absolutus", { text: "der Ablativus absolutus", plural: false }],
+  ["Gerundium und Gerundivum", { text: "Gerundium und Gerundivum", plural: true }],
+  ["Steigerung von Adjektiven und Adverbien", { text: "die Steigerung von Adjektiven und Adverbien", plural: false }]
+]);
+
+const SPECIFIC_RULE_PROMPTS = new Map([
+  ["Relativpronomen qui, quae, quod|hinweis", "Wo steht cum beim Relativpronomen?"],
+  ["PPP Bildung und Verwendung|hinweis", "Welche passiven Zeiten werden mit PPP und esse gebildet?"],
+  ["Partizipien Überblick|hinweis", "Woran passen sich Partizipien an?"],
+  ["velle|hinweis", "Womit kann velle verbunden werden?"],
+  ["Konjunktiv Plusquamperfekt Aktiv|hinweis", "Was passiert bei ire mit den beiden i?"],
+  ["AcI und NcI|hinweis", "Was zeigt der Infinitiv im AcI oder NcI an?"],
+  ["Gerundium und Gerundivum|hinweis", "Woran passt sich das Gerundivum an?"],
+  ["Steigerung von Adjektiven und Adverbien|hinweis", "Wie werden Komparativ und Superlativ dekliniert?"],
+  ["Demonstrativpronomen iste, ista, istud|bedeutung", "Was bedeutet iste, ista, istud?"],
+  ["PPP Bildung und Verwendung|bedeutung", "Welche Zeitstufe und Handlungsrichtung hat das PPP?"],
+  ["PFA und Infinitiv Futur Aktiv|bedeutung", "Welche Zeitstufe und Handlungsrichtung hat das PFA?"]
+]);
+
 export function grammarIntroductionLesson(section) {
   const explicit = Number(section?.lektion ?? section?.lesson);
   if (Number.isFinite(explicit) && explicit > 0) return explicit;
@@ -245,14 +276,28 @@ function questionsFromRules(sections) {
         id: `${record.index}-rule-${key}`,
         section: record.section,
         lesson: record.lesson,
-        prompt: `Welche Aussage gehört zu „${record.section.titel}“?`,
+        prompt: rulePrompt(record.section, key),
         answer: record.answer,
         pool,
-        explanation: `Diese Aussage gehört zur Regel „${record.section.titel}“.`
+        explanation: `Die passende Regel lautet: ${record.answer}`
       }));
     }
   }
   return questions;
+}
+
+function rulePrompt(section, key) {
+  const title = scalar(section?.titel);
+  const specific = SPECIFIC_RULE_PROMPTS.get(`${title}|${key}`);
+  if (specific) return specific;
+  if (key === "bildung_aktiv" || key === "bildung_passiv") {
+    const topic = title.replace(/\s+Aktiv und Passiv$/, "");
+    return `Wie wird der ${topic} ${key === "bildung_aktiv" ? "Aktiv" : "Passiv"} gebildet?`;
+  }
+  const subject = RULE_SUBJECTS.get(title) || { text: title, plural: false };
+  if (key === "bildung") return `Wie ${subject.plural ? "werden" : "wird"} ${subject.text} gebildet?`;
+  if (key === "bedeutung") return `Was bedeutet ${subject.text}?`;
+  return `Was muss man bei ${subject.text} beachten?`;
 }
 
 function makeQuestion({ id, section, lesson = grammarIntroductionLesson(section), prompt, answer, pool, explanation }) {

@@ -130,7 +130,7 @@ function escapeHtml(value = "") {
 }
 
 function label(key) {
-  const labels = { formen: "Formen", form: "Form", kasus: "Kasus", person: "Person", singular: "Singular", plural: "Plural", latein: "Latein", deutsch: "Deutsch", regel: "Regel", beispiele: "Beispiele", beispiel: "Beispiel", bildung: "Bildung", verwendung: "Verwendung", übersetzung: "Übersetzung", merksatz: "Merksatz", maskulin: "Maskulin", feminin: "Feminin", neutrum: "Neutrum", praesens: "Präsens", imperfekt: "Imperfekt", futur: "Futur I", perfekt: "Perfekt", plusquamperfekt: "Plusquamperfekt", ppa: "PPA" };
+  const labels = { formen: "Formen", form: "Form", kasus: "Kasus", numerus: "Numerus", person: "Person", singular: "Singular", plural: "Plural", latein: "Lateinischer Satz", deutsch: "Deutsche Übersetzung", regel: "Regel", beispiele: "Beispiele", beispiel: "Lateinische Form", beispielreihen: "Konjugationsbeispiele", beispiele_3_plural: "Beispiele: 3. Person Plural", bildung: "Bildung", bildung_aktiv: "Bildung im Aktiv", bildung_passiv: "Bildung im Passiv", imperfekt_bildung: "Bildung des Imperfekts", verwendung: "Verwendung", übersetzung: "Übersetzung", uebersetzungsmoeglichkeiten: "Übersetzungsmöglichkeiten", merksatz: "Merksatz", merkbegriff: "Merkbegriff", hinweis: "Wichtig", bedeutung: "Bedeutung", muster: "Grundformen und Bedeutung", personalendungen: "Personalendungen", praesens_personalendungen: "Personalendungen im Präsens", maskulin: "Maskulinum", feminin: "Femininum", neutrum: "Neutrum", praesens: "Präsens", imperfekt: "Imperfekt", futur: "Futur I", perfekt: "Perfekt", plusquamperfekt: "Plusquamperfekt", tempus: "Zeitform", verb: "Grundform", konjugation: "Konjugation", konstruktion: "Konstruktion", partizip: "Partizip", zeitverhaeltnis: "Zeitverhältnis", genus_verbi: "Handlungsrichtung", ppa: "Partizip Präsens Aktiv (PPA)", ppp: "PPP-Form", pfa: "PFA-Form", infinitiv_futur: "Infinitiv Futur Aktiv", stufe: "Steigerungsstufe", adjektiv: "Adjektiv", adverb: "Adverb", aktiv: "Aktiv", passiv: "Passiv", bereich: "Bereich", werte: "Formen" };
   return labels[key.toLowerCase()] || key.replaceAll("_", " ").replace(/^./, c => c.toUpperCase());
 }
 
@@ -1098,26 +1098,105 @@ function renderGrammarDetail(section) {
   const previous = position > 0 ? related[position - 1] : null;
   const next = position >= 0 && position < related.length - 1 ? related[position + 1] : null;
   const sequenceNavigation = `<nav class="grammar-sequence-nav" aria-label="Verwandte Grammatikabschnitte">${previous ? `<button class="button secondary" data-grammar-section="${previous.index}" type="button"><span>← Vorher</span><strong>${escapeHtml(previous.item.titel)}</strong></button>` : `<span></span>`}${next ? `<button class="button secondary" data-grammar-section="${next.index}" type="button"><span>Weiter →</span><strong>${escapeHtml(next.item.titel)}</strong></button>` : ""}</nav>`;
-  app.innerHTML = `<div class="detail-header"><button class="back button secondary" data-category="${category.id}" type="button">← ${escapeHtml(category.title)}</button><p class="eyebrow">${escapeHtml(label(section.typ))} · ${position + 1} von ${related.length}</p><h2>${escapeHtml(section.titel)}</h2></div><div class="grammar-values">${details.map(([key,value]) => `<section class="card grammar-value"><h3>${escapeHtml(label(key))}</h3>${renderGrammarValue(value)}</section>`).join("")}</div>${sequenceNavigation}`;
+  app.innerHTML = `<div class="detail-header"><button class="back button secondary" data-category="${category.id}" type="button">← ${escapeHtml(category.title)}</button><p class="eyebrow">${escapeHtml(label(section.typ))} · ${position + 1} von ${related.length}</p><h2>${escapeHtml(section.titel)}</h2></div><div class="grammar-values">${details.map(([key,value]) => { const presentation = grammarFieldPresentation(section, key); return `<section class="card grammar-value"><h3>${escapeHtml(presentation.title)}</h3>${presentation.description ? `<p class="grammar-value-description">${escapeHtml(presentation.description)}</p>` : ""}${renderGrammarValue(value, { section, key, title: presentation.title })}</section>`; }).join("")}</div>${sequenceNavigation}`;
 }
 
-function renderGrammarValue(value) {
+function grammarFieldPresentation(section, key) {
+  const title = String(section?.titel || "");
+  if (key === "formen") {
+    if (/pronomen/i.test(title)) return { title: `Deklination von ${title.replace(/^.*pronomen\s+/i, "")}`, description: "Die Formen sind nach Numerus, Kasus und Genus geordnet." };
+    if (title === "Partizipien Überblick") return { title: "PPA, PPP und PFA im Vergleich", description: "Vergleiche Zeitverhältnis, Handlungsrichtung, lateinische Form und deutsche Übersetzung." };
+    if (title === "PPP Bildung und Verwendung") return { title: "PPP-Formen und Übersetzung", description: "Zu jeder Grundform stehen das PPP und seine deutsche Übersetzung." };
+    if (/Deklination/.test(title)) return { title: "Deklinationstabelle", description: "Die Formen sind nach Kasus und Numerus geordnet; bei mehreren Wörtern zusätzlich nach Genus." };
+    if (title === "Gerundium und Gerundivum") return { title: "Formen und Verwendung", description: "Lateinische Beispiele stehen direkt neben ihrer deutschen Übersetzung." };
+    if (title === "Steigerung von Adjektiven und Adverbien") return { title: "Steigerungsformen", description: "Positiv, Komparativ und Superlativ für Adjektiv und Adverb im Vergleich." };
+    return { title: "Formtabelle", description: "Die Formen stehen in der Reihenfolge 1. Person Singular bis 3. Person Plural." };
+  }
+  if (key === "beispielreihen") return { title: "Konjugationsbeispiele", description: "Jede Formenreihe läuft von der 1. Person Singular bis zur 3. Person Plural." };
+  if (key === "beispiele") return { title: "Beispiele mit Übersetzung", description: "Die lateinische Konstruktion steht direkt neben der deutschen Übersetzung." };
+  if (key === "personalendungen") return { title: "Personalendungen", description: "Die Zeilen zeigen die 1., 2. und 3. Person; die Spalten unterscheiden Singular und Plural." };
+  if (key === "praesens_personalendungen") return { title: "Personalendungen im Präsens", description: "Reihenfolge: 1., 2., 3. Person Singular; danach 1., 2., 3. Person Plural." };
+  if (key === "beispiele_3_plural") return { title: "Beispielformen in der 3. Person Plural", description: "Die Beispiele zeigen dieselbe Person bei verschiedenen Verben." };
+  if (key === "uebersetzungsmoeglichkeiten") return { title: "Mögliche Übersetzungen", description: "Wähle die Übersetzung, die zum Zusammenhang des Satzes passt." };
+  if (key === "ppa") return { title: "Partizip Präsens Aktiv (PPA)", description: "Grundform des Partizips im Nominativ Singular." };
+  if (["praesens", "imperfekt", "futur", "perfekt", "plusquamperfekt"].includes(key)) return { title: `${label(key)} von ${title}`, description: "Reihenfolge: 1., 2., 3. Person Singular; danach 1., 2., 3. Person Plural." };
+  const titles = { bildung: "So wird es gebildet", bildung_aktiv: "Bildung im Aktiv", bildung_passiv: "Bildung im Passiv", imperfekt_bildung: "Bildung des Imperfekts", hinweis: "Wichtig", bedeutung: "Bedeutung", verwendung: "Verwendung", merksatz: "Merksatz", merkbegriff: "Merkbegriff", muster: "Grundformen und Bedeutung" };
+  return { title: titles[key] || label(key), description: "" };
+}
+
+function renderGrammarValue(value, context = {}) {
   if (value == null) return "";
   if (["string", "number", "boolean"].includes(typeof value)) return `<p>${escapeHtml(value)}</p>`;
   if (Array.isArray(value)) {
-    if (value.every(x => x && typeof x === "object" && !Array.isArray(x))) return renderTable(value);
+    if (["praesens", "imperfekt", "futur", "perfekt", "plusquamperfekt", "praesens_personalendungen"].includes(context.key) && value.length === 6) {
+      const persons = ["1. Person Singular", "2. Person Singular", "3. Person Singular", "1. Person Plural", "2. Person Plural", "3. Person Plural"];
+      return renderTable(value.map((form, index) => ({ person: persons[index], form })), context);
+    }
+    if (value.every(x => x && typeof x === "object" && !Array.isArray(x))) {
+      const expanded = expandGrammarPersonRows(value);
+      return renderTable(expanded, { ...context, personExpanded: expanded !== value });
+    }
     return `<ul class="grammar-list">${value.map(x => `<li>${renderGrammarValue(x)}</li>`).join("")}</ul>`;
   }
+  const matrixRows = context.key === "formen" ? flattenGrammarFormMatrix(value) : [];
+  if (matrixRows.length) return renderTable(matrixRows, context);
+  const numberRows = flattenNumberFormArrays(value);
+  if (numberRows.length) return renderTable(numberRows, context);
   const keys = Object.keys(value);
-  if (keys.every(k => Array.isArray(value[k]))) return renderTable(keys.map(k => ({ Form: label(k), Werte: value[k].join(", ") })));
+  if (keys.every(k => Array.isArray(value[k]))) return renderTable(keys.map(k => ({ bereich: label(k), werte: value[k].join(", ") })), context);
   return `<div>${keys.map(k => `<p><strong>${escapeHtml(label(k))}:</strong> ${renderGrammarValue(value[k])}</p>`).join("")}</div>`;
 }
 
-function renderTable(rows) {
+function expandGrammarPersonRows(rows) {
+  const persons = ["1. Person Singular", "2. Person Singular", "3. Person Singular", "1. Person Plural", "2. Person Plural", "3. Person Plural"];
+  if (!rows.some(row => Object.values(row).some(value => Array.isArray(value) && value.length === persons.length))) return rows;
+  return rows.flatMap(row => {
+    const formKeys = Object.keys(row).filter(key => Array.isArray(row[key]) && row[key].length === persons.length);
+    if (!formKeys.length) return [row];
+    return persons.map((person, index) => ({
+      ...Object.fromEntries(Object.entries(row).filter(([, value]) => !Array.isArray(value))),
+      person,
+      ...Object.fromEntries(formKeys.map(key => [key, row[key][index]]))
+    }));
+  });
+}
+
+function flattenGrammarFormMatrix(forms) {
+  if (!forms || typeof forms !== "object" || !forms.singular || !forms.plural) return [];
+  const rows = [];
+  for (const [number, cases] of Object.entries(forms)) {
+    if (!cases || typeof cases !== "object") return [];
+    for (const [grammaticalCase, values] of Object.entries(cases)) {
+      if (!Array.isArray(values)) return [];
+      rows.push({ numerus: label(number), kasus: label(grammaticalCase), maskulin: values[0], feminin: values[1], neutrum: values[2] });
+    }
+  }
+  return rows;
+}
+
+function flattenNumberFormArrays(value) {
+  if (!value || !Array.isArray(value.singular) || !Array.isArray(value.plural) || value.singular.length !== value.plural.length) return [];
+  return value.singular.map((form, index) => ({ person: `${index + 1}. Person`, singular: form, plural: value.plural[index] }));
+}
+
+function renderTable(rows, context = {}) {
   const present = [...new Set(rows.flatMap(row => Object.keys(row)))];
-  const priority = present.includes("person") ? ["person","latein","deutsch","esse","posse","ire","tempus","verb"] : ["kasus","singular","plural","maskulin","feminin","neutrum","latein","deutsch"];
+  const priority = ["numerus","kasus","person","konstruktion","konjugation","verb","form","stufe","partizip","zeitverhaeltnis","genus_verbi","singular","plural","maskulin","feminin","neutrum","esse","posse","ire","tempus","aktiv","passiv","ppa","ppp","pfa","infinitiv_futur","adjektiv","adverb","beispiel","latein","deutsch","formen"];
   const columns = [...priority.filter(k => present.includes(k)), ...present.filter(k => !priority.includes(k))];
-  return `<div class="grammar-table-wrap"><table class="grammar-table"><thead><tr>${columns.map(c => `<th>${escapeHtml(label(c))}</th>`).join("")}</tr></thead><tbody>${rows.map(row => `<tr>${columns.map(c => `<td>${escapeHtml(formatScalar(row[c]))}</td>`).join("")}</tr>`).join("")}</tbody></table></div>`;
+  return `<div class="grammar-table-wrap"><table class="grammar-table"><caption class="sr-only">${escapeHtml(context.title || "Grammatiktabelle")}</caption><thead><tr>${columns.map(c => `<th>${escapeHtml(grammarColumnLabel(c, context, rows))}</th>`).join("")}</tr></thead><tbody>${rows.map(row => `<tr>${columns.map(c => `<td>${escapeHtml(formatScalar(row[c]))}</td>`).join("")}</tr>`).join("")}</tbody></table></div>`;
+}
+
+function grammarColumnLabel(column, context, rows) {
+  if (column === "formen" && context.personExpanded) return "Lateinische Form";
+  if (column === "formen" && context.key === "beispielreihen") return "Formen: 1. Sg. bis 3. Pl.";
+  if (column === "form" && context.key === "praesens_personalendungen") return "Endung";
+  if (column === "form" && ["praesens", "imperfekt", "futur", "perfekt", "plusquamperfekt"].includes(context.key)) return "Lateinische Form";
+  if (["singular", "plural"].includes(column) && context.key === "personalendungen") return `${label(column)}-Endung`;
+  if (["maskulin", "feminin", "neutrum"].includes(column) && /Deklination/.test(context.section?.titel || "")) {
+    const nominative = rows.find(row => /^Nominativ(?:\s|$)/i.test(String(row.kasus || "")));
+    if (nominative?.[column]) return `${nominative[column]} (${label(column)})`;
+  }
+  return label(column);
 }
 
 function formatScalar(value) { if (value == null) return ""; if (Array.isArray(value)) return value.join(", "); if (typeof value === "object") return Object.entries(value).map(([k,v]) => `${label(k)}: ${formatScalar(v)}`).join(" · "); return String(value); }
@@ -1417,5 +1496,9 @@ async function init() {
   }
 }
 
-if ("serviceWorker" in navigator && location.protocol.startsWith("http")) navigator.serviceWorker.register("service-worker.js");
+if ("serviceWorker" in navigator && location.protocol.startsWith("http")) {
+  navigator.serviceWorker.register("service-worker.js", { updateViaCache: "none" })
+    .then(registration => registration.update())
+    .catch(() => {});
+}
 init();

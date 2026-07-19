@@ -28,6 +28,15 @@ test("every service-worker shell asset exists", () => {
   }
 });
 
+test("a new app shell replaces stale grammar code in already open tabs", () => {
+  assert.match(appSource, /updateViaCache:\s*"none"/);
+  assert.match(appSource, /registration\.update\(\)/);
+  assert.match(serviceWorkerSource, /hasOlderShell/);
+  assert.match(serviceWorkerSource, /clients\.matchAll\(\{ type: "window" \}\)/);
+  assert.match(serviceWorkerSource, /client\.navigate\(client\.url\)/);
+  assert.match(serviceWorkerSource, /new Request\(url, \{ cache: "reload" \}\)/);
+});
+
 test("the revocable access manifest is always fetched from the network and fails closed", () => {
   assert.equal(shellAssets.includes("data/course-access.json"), false);
   assert.match(serviceWorkerSource, /pathname\.endsWith\("\/data\/course-access\.json"\)/);

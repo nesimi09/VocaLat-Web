@@ -1,5 +1,5 @@
-const CACHE = "vocalat-web-shell-v23";
-const RUNTIME_CACHE = "vocalat-web-runtime-v23";
+const CACHE = "vocalat-web-shell-v24";
+const RUNTIME_CACHE = "vocalat-web-runtime-v24";
 const ASSETS = [
   "./",
   "./index.html",
@@ -28,8 +28,15 @@ const ASSETS = [
   "./vendor/whitakers/whitakers-words.js"
 ];
 
-self.addEventListener("install", event => event.waitUntil(caches.open(CACHE).then(cache => cache.addAll(ASSETS)).then(() => self.skipWaiting())));
-self.addEventListener("activate", event => event.waitUntil(caches.keys().then(keys => Promise.all(keys.filter(key => key.startsWith("vocalat-web-") && ![CACHE, RUNTIME_CACHE].includes(key)).map(key => caches.delete(key)))).then(() => self.clients.claim())));
+self.addEventListener("install", event => event.waitUntil(caches.open(CACHE).then(cache => cache.addAll(ASSETS.map(url => new Request(url, { cache: "reload" })))).then(() => self.skipWaiting())));
+self.addEventListener("activate", event => event.waitUntil(caches.keys().then(async keys => {
+  const hasOlderShell = keys.some(key => key.startsWith("vocalat-web-shell-") && key !== CACHE);
+  await Promise.all(keys.filter(key => key.startsWith("vocalat-web-") && ![CACHE, RUNTIME_CACHE].includes(key)).map(key => caches.delete(key)));
+  await self.clients.claim();
+  if (!hasOlderShell) return;
+  const windows = await self.clients.matchAll({ type: "window" });
+  await Promise.all(windows.map(client => client.navigate(client.url).catch(() => null)));
+})));
 self.addEventListener("fetch", event => {
   if (event.request.method !== "GET") return;
   const requestUrl = new URL(event.request.url);

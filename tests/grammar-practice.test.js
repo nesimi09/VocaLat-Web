@@ -53,8 +53,20 @@ test("form questions are short and never repeat a complete table title", () => {
   assert.equal(question("voluerant", "velle"), "Was ist die 3. Person Plural von velle im Plusquamperfekt?");
   assert.equal(question("missus, -a, -um", "PPP Bildung und Verwendung"), "Was ist das PPP von mittere?");
   assert.equal(question("gleichzeitig", "Partizipien Überblick"), "Welches Zeitverhältnis hat das PPA?");
+  assert.equal(question("lobend", "Partizipien Überblick"), "Wie wird laudans übersetzt?");
   assert.equal(question("ad legendum", "Gerundium und Gerundivum"), "Was ist ein Beispiel für Gerundium mit ad?");
   assert.equal(question("clarior, clarius", "Steigerung von Adjektiven und Adverbien"), "Was ist der Komparativ von clarus als Adjektiv?");
+});
+
+test("rule questions ask for the exact grammar fact instead of a matching statement", () => {
+  const bank = buildGrammarQuestionBank(grammar);
+  const rules = bank.filter(question => /-rule-/.test(question.id));
+  assert.ok(rules.length >= 10);
+  assert.ok(rules.every(question => !/Welche (?:Aussage|Angabe) gehört/.test(question.prompt)));
+
+  const aciHint = rules.find(question => question.sectionTitle === "AcI und NcI" && question.id.endsWith("-rule-hinweis"));
+  assert.equal(aciHint?.prompt, "Was zeigt der Infinitiv im AcI oder NcI an?");
+  assert.match(aciHint?.answer || "", /Zeitverhältnis/);
 });
 
 test("grammar practice never includes topics introduced after the selected lesson", () => {

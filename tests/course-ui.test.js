@@ -108,6 +108,16 @@ test("grammar reference uses the ordered sequence and related navigation", () =>
   assert.doesNotMatch(app, /id="grammar-search"|Abschnitte suchen/);
 });
 
+test("grammar tables explain their content with concrete headings and columns", () => {
+  assert.match(app, /PPA, PPP und PFA im Vergleich/);
+  assert.match(app, /Deklination von/);
+  assert.match(app, /Die Formen sind nach Numerus, Kasus und Genus geordnet/);
+  assert.match(app, /Formen: 1\. Sg\. bis 3\. Pl\./);
+  assert.match(app, /flattenGrammarFormMatrix/);
+  assert.match(app, /zeitverhaeltnis: "Zeitverhältnis"/);
+  assert.match(app, /genus_verbi: "Handlungsrichtung"/);
+});
+
 test("translation uses the complete local vocabulary without a lesson gate", () => {
   assert.doesNotMatch(app, /Vokabelstand|translation-lesson|Foto oder Screenshot · die Übersetzung startet automatisch/);
   assert.match(app, /analyzeBookText\(state\.translationText, state\.vocabulary, state\.grammar, null/);
