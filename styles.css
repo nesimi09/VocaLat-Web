@@ -343,9 +343,6 @@ button.card:hover { transform: translateY(-2px); border-color: rgba(168,120,51,.
 .grammar-practice-entry p { margin: 0; color: var(--muted); }
 .grammar-practice-controls { display: grid; grid-template-columns: minmax(220px, 300px) auto; align-items: start; gap: 10px; }
 .grammar-lesson-picker { width: min(100%, 300px); }
-.grammar-through-control { display: grid; gap: 5px; }
-.grammar-through-control > span { color: var(--muted); font-size: .72rem; font-weight: 750; }
-.grammar-through-control .select { width: 100%; }
 .grammar-category-practice { margin-top: 16px; }
 .grammar-practice { display: grid; gap: 16px; width: min(100%, 720px); margin: 0 auto; }
 .grammar-practice > .text-button { justify-self: start; }

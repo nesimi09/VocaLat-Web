@@ -44,7 +44,7 @@ const state = {
   practiceLessons: "all", practicePickerOpen: false, mode: "typed", practiceSet: [], questionIndex: 0,
   practiceAnswered: 0, practiceCorrect: 0, practiceComplete: false,
   revealed: false, selectedChoice: null, feedback: null, answerRecorded: false, typedAnswer: "",
-  grammarPracticeCategory: null, grammarPracticeMaxLesson: 15, grammarPracticeLessons: null, grammarPracticePickerOpen: false, grammarPracticeRound: [], grammarPracticeIndex: 0,
+  grammarPracticeCategory: null, grammarPracticeLessons: [], grammarPracticePickerOpen: false, grammarPracticeRound: [], grammarPracticeIndex: 0,
   grammarPracticeSelected: null, grammarPracticeRecorded: false, grammarPracticeCorrect: 0, grammarPracticeComplete: false,
   translationText: "", translationRawText: "", translationImage: null, translationImageUrl: null, translationUsesImage: false,
   translationBusy: false, translationProgress: 0, translationStatus: "", translationError: "",
@@ -1023,14 +1023,13 @@ function selectedGrammarPracticeLessons() {
     const allowed = new Set(available);
     return state.grammarPracticeLessons.map(Number).filter(lesson => allowed.has(lesson));
   }
-  return available.filter(lesson => lesson <= state.grammarPracticeMaxLesson);
+  return [];
 }
 
 function grammarPracticeSelectionLabel() {
-  if (state.grammarPracticeLessons == null) return `Bis Lektion ${state.grammarPracticeMaxLesson}`;
   if (state.grammarPracticeLessons === "all") return "Alle Lektionen";
   const selected = selectedGrammarPracticeLessons();
-  if (!selected.length) return "Keine Lektion";
+  if (!selected.length) return "Keine ausgewählt";
   if (selected.length === 1) return `Lektion ${selected[0]}`;
   if (selected.length <= 3) return `Lektionen ${selected.join(", ")}`;
   return `${selected.length} Lektionen ausgewählt`;
@@ -1087,7 +1086,8 @@ function renderGrammar() {
   const grammarLessons = lessons().map(Number);
   const selectedGrammarLessons = new Set(selectedGrammarPracticeLessons().map(Number));
   const grammarSelection = grammarPracticeSelectionLabel();
-  app.innerHTML = `<section class="grammar-practice-entry"><div><h2>Grammatik üben</h2><p>Wähle eine oder mehrere Lektionen für deinen Grammatiktest.</p></div><div class="grammar-practice-controls"><div class="lesson-picker grammar-lesson-picker"><button class="lesson-picker-trigger" data-grammar-picker type="button" aria-expanded="${state.grammarPracticePickerOpen}" aria-controls="grammar-lesson-panel"><span><small>Lektionen</small><strong>${escapeHtml(grammarSelection)}</strong></span><span class="picker-action" aria-hidden="true">${state.grammarPracticePickerOpen ? "Schließen" : "Ändern"}</span></button><div class="lesson-picker-panel" id="grammar-lesson-panel" ${state.grammarPracticePickerOpen ? "" : "hidden"}><label class="grammar-through-control"><span>Bis zur aktuellen Lektion</span><select class="select" id="grammar-practice-lesson" aria-label="Aktuelle Lektion für Grammatikübungen">${grammarLessons.map(lesson => `<option value="${lesson}" ${Number(lesson) === Number(state.grammarPracticeMaxLesson) ? "selected" : ""}>Lektion ${lesson}</option>`).join("")}</select></label><div class="lesson-picker-actions"><button class="text-button" data-grammar-select-all type="button">Alle</button><button class="text-button" data-grammar-clear type="button">Keine</button></div><div class="lesson-checkbox-grid" role="group" aria-label="Lektionen für den Grammatiktest auswählen">${grammarLessons.map(lesson => `<label class="lesson-checkbox"><input type="checkbox" data-grammar-practice-lesson value="${lesson}" aria-label="Lektion ${lesson}" ${selectedGrammarLessons.has(lesson) ? "checked" : ""}><span aria-hidden="true">${lesson}</span></label>`).join("")}</div><button class="button secondary lesson-picker-done" data-grammar-picker-close type="button">Fertig</button></div></div><button class="button" data-grammar-practice="all" type="button" ${selectedGrammarLessons.size ? "" : "disabled"}>Grammatiktest starten</button></div></section><div class="section-heading"><h2>Nachschlagen</h2></div><div class="grid two">${CATEGORIES.map(cat => { const count = sections.filter(s => categoryFor(s) === cat.id).length; return count ? `<button class="card category-card" data-category="${cat.id}" type="button"><span class="category-icon">${cat.icon}</span><span><h3>${escapeHtml(cat.title)}</h3><small class="meta">${count} Abschnitte</small></span></button>` : ""; }).join("")}</div>`;
+  const grammarPickerAction = state.grammarPracticePickerOpen ? "Schließen" : selectedGrammarLessons.size ? "Ändern" : "Auswählen";
+  app.innerHTML = `<section class="grammar-practice-entry"><div><h2>Grammatik üben</h2><p>Wähle eine oder mehrere Lektionen für deinen Grammatiktest.</p></div><div class="grammar-practice-controls"><div class="lesson-picker grammar-lesson-picker"><button class="lesson-picker-trigger" data-grammar-picker type="button" aria-expanded="${state.grammarPracticePickerOpen}" aria-controls="grammar-lesson-panel"><span><small>Lektionen</small><strong>${escapeHtml(grammarSelection)}</strong></span><span class="picker-action" aria-hidden="true">${grammarPickerAction}</span></button><div class="lesson-picker-panel" id="grammar-lesson-panel" ${state.grammarPracticePickerOpen ? "" : "hidden"}><div class="lesson-picker-actions"><button class="text-button" data-grammar-select-all type="button">Alle</button><button class="text-button" data-grammar-clear type="button">Keine</button></div><div class="lesson-checkbox-grid" role="group" aria-label="Lektionen für den Grammatiktest auswählen">${grammarLessons.map(lesson => `<label class="lesson-checkbox"><input type="checkbox" data-grammar-practice-lesson value="${lesson}" aria-label="Lektion ${lesson}" ${selectedGrammarLessons.has(lesson) ? "checked" : ""}><span aria-hidden="true">${lesson}</span></label>`).join("")}</div><button class="button secondary lesson-picker-done" data-grammar-picker-close type="button">Fertig</button></div></div><button class="button" data-grammar-practice="all" type="button" ${selectedGrammarLessons.size ? "" : "disabled"}>Grammatiktest starten</button></div></section><div class="section-heading"><h2>Nachschlagen</h2></div><div class="grid two">${CATEGORIES.map(cat => { const count = sections.filter(s => categoryFor(s) === cat.id).length; return count ? `<button class="card category-card" data-category="${cat.id}" type="button"><span class="category-icon">${cat.icon}</span><span><h3>${escapeHtml(cat.title)}</h3><small class="meta">${count} Abschnitte</small></span></button>` : ""; }).join("")}</div>`;
 }
 
 function renderGrammarDetail(section) {
@@ -1304,14 +1304,6 @@ document.addEventListener("input", event => {
 document.addEventListener("change", event => {
   if (event.target.id === "lesson-filter") { state.lesson = event.target.value; render(); }
   if (event.target.id === "favorite-filter") { state.favoritesOnly = event.target.checked; render(); }
-  if (event.target.id === "grammar-practice-lesson") {
-    state.grammarPracticeMaxLesson = Number(event.target.value);
-    state.grammarPracticeLessons = null;
-    state.grammarPracticePickerOpen = true;
-    render();
-    requestAnimationFrame(() => document.querySelector("#grammar-practice-lesson")?.focus());
-    announce(`Grammatikübungen sind jetzt auf Lektion ${state.grammarPracticeMaxLesson} begrenzt.`);
-  }
   if (event.target.matches?.("[data-grammar-practice-lesson]")) {
     const changedLesson = Number(event.target.value);
     const selected = new Set(selectedGrammarPracticeLessons().map(Number));

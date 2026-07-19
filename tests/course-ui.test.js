@@ -120,15 +120,16 @@ test("session-only implementation details are not shown to learners", () => {
 });
 
 test("grammar practice supports one or multiple lessons without later material", () => {
-  assert.match(app, /id="grammar-practice-lesson"/);
   assert.match(app, /data-grammar-picker/);
   assert.match(app, /data-grammar-practice-lesson/);
   assert.match(app, /data-grammar-select-all/);
   assert.match(app, /data-grammar-clear/);
-  assert.match(app, /grammarPracticeMaxLesson/);
   assert.match(app, /grammarPracticeLessons/);
   assert.match(app, /lessons: selectedGrammarPracticeLessons\(\)/);
   assert.match(app, /Wähle eine oder mehrere Lektionen für deinen Grammatiktest/);
   assert.match(app, /Grammatiktest starten/);
+  assert.match(app, /grammarPracticeLessons: \[\]/);
+  assert.match(app, /selectedGrammarLessons\.size \? "" : "disabled"/);
+  assert.doesNotMatch(app, /Bis zur aktuellen Lektion|Bis Lektion|grammarPracticeMaxLesson|id="grammar-practice-lesson"/);
   assert.doesNotMatch(app, /if \(!round\.length && category\)/);
 });
