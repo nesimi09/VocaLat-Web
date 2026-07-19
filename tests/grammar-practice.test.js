@@ -27,8 +27,34 @@ test("a grammar round is short and can be limited to one category", () => {
 
 test("esse, posse and ire forms are practiced in their ordered tables", () => {
   const bank = buildGrammarQuestionBank(grammar);
-  assert.ok(bank.some(question => /Form von posse/.test(question.prompt) && question.answer === "possum"));
-  assert.ok(bank.some(question => /Form von ire/.test(question.prompt) && question.answer === "ibant"));
+  assert.ok(bank.some(question => question.prompt === "Was ist die 1. Person Singular von posse im Präsens?" && question.answer === "possum"));
+  assert.ok(bank.some(question => question.prompt === "Was ist die 3. Person Plural von ire im Imperfekt?" && question.answer === "ibant"));
+});
+
+test("form questions are short and never repeat a complete table title", () => {
+  const bank = buildGrammarQuestionBank(grammar);
+  const formQuestions = bank.filter(question => /-(?:forms|nested|conjugation|example)-/.test(question.id));
+  assert.ok(formQuestions.length >= 140);
+  assert.ok(formQuestions.every(question => !question.prompt.includes(`„${question.sectionTitle}“`)));
+  assert.ok(formQuestions.every(question => !question.prompt.includes("Welche Form steht bei")));
+  assert.ok(formQuestions.every(question => !/gehört bei|lautet bei/.test(question.prompt)));
+  assert.ok(formQuestions.every(question => {
+    if (!/^\p{L}+$/u.test(question.answer)) return true;
+    const promptWords = question.prompt.toLocaleLowerCase("de").split(/[^\p{L}]+/u);
+    return !promptWords.includes(question.answer.toLocaleLowerCase("de"));
+  }));
+
+  const question = (answer, sectionTitle) => bank.find(item => item.answer === answer && item.sectionTitle === sectionTitle)?.prompt;
+  assert.equal(question("istos", "Demonstrativpronomen iste, ista, istud"), "Was ist der Akkusativ Plural Maskulinum von iste?");
+  assert.equal(question("quarum", "Relativpronomen qui, quae, quod"), "Was ist der Genitiv Plural Femininum von quae?");
+  assert.equal(question("servas", "a-Deklination – serva, servae f."), "Was ist der Akkusativ Plural von serva?");
+  assert.equal(question("avos", "o-Deklination – avus und bellum"), "Was ist der Akkusativ Plural von avus?");
+  assert.equal(question("rogabas", "Imperfekt Aktiv"), "Was ist die 2. Person Singular von rogare im Imperfekt Aktiv?");
+  assert.equal(question("voluerant", "velle"), "Was ist die 3. Person Plural von velle im Plusquamperfekt?");
+  assert.equal(question("missus, -a, -um", "PPP Bildung und Verwendung"), "Was ist das PPP von mittere?");
+  assert.equal(question("gleichzeitig", "Partizipien Überblick"), "Welches Zeitverhältnis hat das PPA?");
+  assert.equal(question("ad legendum", "Gerundium und Gerundivum"), "Was ist ein Beispiel für Gerundium mit ad?");
+  assert.equal(question("clarior, clarius", "Steigerung von Adjektiven und Adverbien"), "Was ist der Komparativ von clarus als Adjektiv?");
 });
 
 test("grammar practice never includes topics introduced after the selected lesson", () => {

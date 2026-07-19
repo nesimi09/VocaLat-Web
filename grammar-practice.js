@@ -140,6 +140,7 @@ function questionsFromRows(section, sectionIndex) {
       const answer = scalar(row[key]);
       const descriptor = scalar(row[descriptorKey]);
       if (!answer || !descriptor) continue;
+      if (descriptorKey === "kasus" && sameForm(answer, declensionHeadword(rows, key))) continue;
       const lesson = rowIntroductionLesson(section, row);
       const pool = rowAnswerPool(section, rows, key, lesson);
       if (pool.length < 3) continue;
@@ -147,10 +148,10 @@ function questionsFromRows(section, sectionIndex) {
         id: `${sectionIndex}-forms-${key}-${rowIndex}`,
         section,
         lesson,
-        prompt: rowPrompt(section.titel, descriptorKey, descriptor, key),
+        prompt: rowPrompt(section, rows, row, descriptorKey, descriptor, key),
         answer,
         pool,
-        explanation: `${answer} gehört bei „${section.titel}“ zu ${descriptor}.`
+        explanation: rowExplanation(section, rows, row, descriptorKey, descriptor, key, answer)
       }));
     }
   }
@@ -169,13 +170,16 @@ function questionsFromNestedForms(section, sectionIndex) {
       if (!Array.isArray(values)) continue;
       values.forEach((answer, genderIndex) => {
         if (!scalar(answer)) return;
+        const grammaticalForm = `${capitalize(grammaticalCase)} ${capitalize(number)} ${GENDERS[genderIndex] || `${genderIndex + 1}. Form`}`;
+        const headword = pronounHeadword(forms, genderIndex, section.titel);
+        if (sameForm(answer, headword)) return;
         questions.push(makeQuestion({
           id: `${sectionIndex}-nested-${number}-${grammaticalCase}-${genderIndex}`,
           section,
-          prompt: `Welche Form steht bei „${section.titel}“ im ${capitalize(grammaticalCase)} ${capitalize(number)} (${GENDERS[genderIndex] || `${genderIndex + 1}. Form`})?`,
+          prompt: `Was ist der ${grammaticalForm} von ${headword}?`,
           answer,
           pool,
-          explanation: `${answer} ist die passende Form im ${capitalize(grammaticalCase)} ${capitalize(number)}.`
+          explanation: `${answer} ist der ${grammaticalForm} von ${headword}.`
         }));
       });
     }
@@ -191,10 +195,10 @@ function questionsFromConjugationArrays(section, sectionIndex) {
     forms.forEach((answer, index) => questions.push(makeQuestion({
       id: `${sectionIndex}-conjugation-${key}-${index}`,
       section,
-      prompt: `Wie lautet bei „${section.titel}“ die ${PERSONS[index] || `${index + 1}. Form`} im ${tenseLabel(key)}?`,
+      prompt: `Was ist die ${PERSONS[index] || `${index + 1}. Form`} von ${sectionHeadword(section.titel)} im ${tenseLabel(key)}?`,
       answer,
       pool: forms,
-      explanation: `${answer} ist die ${PERSONS[index] || `${index + 1}. Form`} im ${tenseLabel(key)}.`
+      explanation: `${answer} ist die ${PERSONS[index] || `${index + 1}. Form`} von ${sectionHeadword(section.titel)} im ${tenseLabel(key)}.`
     })));
   }
   return questions;
@@ -211,10 +215,10 @@ function questionsFromExampleRows(section, sectionIndex) {
       questions.push(makeQuestion({
         id: `${sectionIndex}-example-${rowIndex}-${formIndex}`,
         section,
-        prompt: `Welche Form von ${row.verb || "diesem Verb"} gehört zur ${PERSONS[formIndex] || `${formIndex + 1}. Form`}?`,
+        prompt: `Was ist die ${PERSONS[formIndex] || `${formIndex + 1}. Form`} von ${row.verb || "diesem Verb"} im ${tenseFromTitle(section.titel)}?`,
         answer,
         pool,
-        explanation: `${answer} ist hier die ${PERSONS[formIndex] || `${formIndex + 1}. Form`}.`
+        explanation: `${answer} ist die ${PERSONS[formIndex] || `${formIndex + 1}. Form`} von ${row.verb || "diesem Verb"} im ${tenseFromTitle(section.titel)}.`
       }));
     });
   }
@@ -281,10 +285,86 @@ function rowAnswerPool(section, rows, key, lesson) {
   return unique([...eligibleAnswers, ...safeDistractors]);
 }
 
-function rowPrompt(title, descriptorKey, descriptor, valueKey) {
-  if (descriptorKey === "person") return `Welche Form von ${label(valueKey)} gehört bei „${title}“ zu ${descriptor}?`;
-  if (descriptorKey === "kasus") return `Welche ${label(valueKey)}-Form steht bei „${title}“ im ${descriptor}?`;
-  return `Welche Angabe gehört bei „${title}“ zu ${descriptor} (${label(valueKey)})?`;
+function rowPrompt(section, rows, row, descriptorKey, descriptor, valueKey) {
+  if (descriptorKey === "person") {
+    return `Was ist die ${personLabel(descriptor)} von ${label(valueKey)} im ${tenseFromTitle(section.titel)}?`;
+  }
+  if (descriptorKey === "kasus") {
+    return `Was ist der ${caseFormLabel(descriptor, valueKey)} von ${declensionHeadword(rows, valueKey)}?`;
+  }
+  if (descriptorKey === "verb") {
+    return valueKey === "deutsch"
+      ? `Wie wird das PPP von ${descriptor} übersetzt?`
+      : `Was ist das PPP von ${descriptor}?`;
+  }
+  if (descriptorKey === "partizip") {
+    return ({
+      zeitverhaeltnis: `Welches Zeitverhältnis hat das ${descriptor}?`,
+      genus_verbi: `Welches Genus Verbi hat das ${descriptor}?`,
+      beispiel: `Was ist eine Beispielform für das ${descriptor}?`,
+      deutsch: `Wie wird ${row.beispiel || descriptor} übersetzt?`
+    })[valueKey] || `Was gehört zum ${descriptor}?`;
+  }
+  if (descriptorKey === "form") {
+    return valueKey === "deutsch"
+      ? `Wie wird ${row.beispiel || descriptor} übersetzt?`
+      : `Was ist ein Beispiel für ${descriptor}?`;
+  }
+  if (descriptorKey === "stufe") return comparisonPrompt(rows, row, descriptor, valueKey);
+  return `Was ist die passende Angabe zu ${descriptor}?`;
+}
+
+function rowExplanation(section, rows, row, descriptorKey, descriptor, valueKey, answer) {
+  if (descriptorKey === "person") return `${answer} ist die ${personLabel(descriptor)} von ${label(valueKey)} im ${tenseFromTitle(section.titel)}.`;
+  if (descriptorKey === "kasus") return `${answer} ist der ${caseFormLabel(descriptor, valueKey)} von ${declensionHeadword(rows, valueKey)}.`;
+  if (descriptorKey === "verb" && valueKey === "ppp") return `${answer} ist das PPP von ${descriptor}.`;
+  return `Richtig ist: ${answer}.`;
+}
+
+function comparisonPrompt(rows, row, degree, valueKey) {
+  const positive = rows.find(candidate => scalar(candidate.stufe).toLocaleLowerCase("de") === "positiv") || rows[0] || {};
+  if (degree === "Positiv") {
+    if (valueKey === "adjektiv") return `Welche lateinische Adjektivform bedeutet „${row.deutsch}“?`;
+    if (valueKey === "adverb") return `Was ist das Adverb zu ${row.adjektiv}?`;
+    if (valueKey === "deutsch") return `Was bedeutet ${row.adjektiv}?`;
+  }
+  const headword = scalar(positive[valueKey === "deutsch" ? "adjektiv" : valueKey]) || scalar(positive.adjektiv);
+  return valueKey === "deutsch"
+    ? `Wie wird der ${degree} von ${headword} übersetzt?`
+    : `Was ist der ${degree} von ${headword} als ${valueKey === "adverb" ? "Adverb" : "Adjektiv"}?`;
+}
+
+function declensionHeadword(rows, valueKey) {
+  const nominative = rows.find(row => /^Nominativ(?:\s|$)/i.test(scalar(row.kasus))) || rows[0] || {};
+  if (["singular", "plural"].includes(valueKey)) return scalar(nominative.singular) || scalar(nominative.plural) || "diesem Wort";
+  return scalar(nominative[valueKey]) || label(valueKey);
+}
+
+function caseFormLabel(descriptor, valueKey) {
+  const expanded = String(descriptor).replace(/\bSg\./g, "Singular").replace(/\bPl\./g, "Plural");
+  if (/\b(?:Singular|Plural)\b/.test(expanded)) return expanded;
+  return `${expanded} ${capitalize(label(valueKey))}`;
+}
+
+function personLabel(value) {
+  return String(value)
+    .replace(/^(\d)\.\s*Sg\.$/, "$1. Person Singular")
+    .replace(/^(\d)\.\s*Pl\.$/, "$1. Person Plural");
+}
+
+function pronounHeadword(forms, genderIndex, title) {
+  return scalar(forms?.singular?.nominativ?.[genderIndex])
+    || String(title).match(/pronomen\s+([^,\s]+)/i)?.[1]
+    || sectionHeadword(title);
+}
+
+function sectionHeadword(title) {
+  return String(title).split(/[–—]/).at(-1).trim().split(/[\s,]/)[0] || "diesem Wort";
+}
+
+function tenseFromTitle(title) {
+  const match = String(title).match(/^(Präsens|Imperfekt|Futur I|Perfekt|Plusquamperfekt|Futur II)(?:\s+(Aktiv|Passiv))?\b/);
+  return match ? [match[1], match[2]].filter(Boolean).join(" ") : "angegebenen Tempus";
 }
 
 function label(value) {
@@ -292,11 +372,15 @@ function label(value) {
 }
 
 function tenseLabel(value) {
-  return ({ praesens: "Präsens", imperfekt: "Imperfekt", futur: "Futur", perfekt: "Perfekt", plusquamperfekt: "Plusquamperfekt", ppa: "PPA" })[value] || value;
+  return ({ praesens: "Präsens", imperfekt: "Imperfekt", futur: "Futur I", perfekt: "Perfekt", plusquamperfekt: "Plusquamperfekt", ppa: "PPA" })[value] || value;
 }
 
 function scalar(value) {
   return ["string", "number"].includes(typeof value) ? String(value).trim() : "";
+}
+
+function sameForm(left, right) {
+  return scalar(left).toLocaleLowerCase("de") === scalar(right).toLocaleLowerCase("de");
 }
 
 function distinctQuestions(questions) {
