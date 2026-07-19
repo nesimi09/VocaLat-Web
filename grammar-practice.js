@@ -4,6 +4,8 @@ const PERSONS = ["1. Person Singular", "2. Person Singular", "3. Person Singular
 const DESCRIPTOR_KEYS = ["person", "kasus", "form", "stufe", "partizip", "verb"];
 const GENDERS = ["Maskulinum", "Femininum", "Neutrum"];
 
+export const GRAMMAR_STAGE_STARTS = Object.freeze([1, 4, 8, 11, 14, 17, 20, 23, 26, 29]);
+
 // Earliest lesson in which each topic is used by the guided course. Keeping
 // this beside the generator makes the limit apply to every practice entry.
 const INTRODUCTION_LESSONS = new Map([
@@ -69,9 +71,33 @@ export function grammarIntroductionLesson(section) {
   return INTRODUCTION_LESSONS.get(section?.titel) || 31;
 }
 
-export function buildGrammarPractice(sections, { category = null, maxLesson = 31, limit = 10, random = Math.random } = {}) {
+export function grammarStageForLesson(lesson) {
+  const numericLesson = Math.trunc(Number(lesson));
+  if (!Number.isFinite(numericLesson) || numericLesson < 1 || numericLesson > 31) return null;
+  for (let index = GRAMMAR_STAGE_STARTS.length - 1; index >= 0; index -= 1) {
+    if (GRAMMAR_STAGE_STARTS[index] <= numericLesson) return GRAMMAR_STAGE_STARTS[index];
+  }
+  return null;
+}
+
+export function grammarStagesForLessons(lessons) {
+  const values = Array.isArray(lessons) ? lessons : [lessons];
+  return [...new Set(values.map(grammarStageForLesson).filter(Number.isInteger))];
+}
+
+export function buildGrammarPractice(sections, {
+  category = null,
+  maxLesson = 31,
+  lessons = null,
+  selectedLessons = lessons,
+  limit = 10,
+  random = Math.random
+} = {}) {
   const lessonLimit = Number(maxLesson);
   const effectiveLessonLimit = Number.isFinite(lessonLimit) ? lessonLimit : 31;
+  const selectedStages = selectedLessons === null || selectedLessons === undefined
+    ? null
+    : new Set(grammarStagesForLessons(selectedLessons));
   const allowed = Array.isArray(sections)
     ? sections.filter(section =>
       (!category || grammarCategory(section) === category)
@@ -79,7 +105,10 @@ export function buildGrammarPractice(sections, { category = null, maxLesson = 31
     )
     : [];
   const bank = buildGrammarQuestionBank(allowed)
-    .filter(question => question.lesson <= effectiveLessonLimit);
+    .filter(question =>
+      question.lesson <= effectiveLessonLimit
+      && (!selectedStages || selectedStages.has(grammarStageForLesson(question.lesson)))
+    );
   return shuffle(bank, random).slice(0, Math.max(1, limit)).map(question => ({
     ...question,
     options: shuffle(question.options, random)
@@ -196,18 +225,28 @@ function questionsFromRules(sections) {
   const ruleKeys = ["bildung", "bildung_aktiv", "bildung_passiv", "hinweis", "bedeutung"];
   const questions = [];
   for (const key of ruleKeys) {
-    const records = sections.map((section, index) => ({ section, index, answer: scalar(section[key]) }))
+    const records = sections.map((section, index) => ({
+      section,
+      index,
+      lesson: grammarIntroductionLesson(section),
+      answer: scalar(section[key])
+    }))
       .filter(record => record.answer && record.answer.length <= 120);
     if (records.length < 3) continue;
-    const pool = records.map(record => record.answer);
-    for (const record of records) questions.push(makeQuestion({
-      id: `${record.index}-rule-${key}`,
-      section: record.section,
-      prompt: `Welche Aussage gehört zu „${record.section.titel}“?`,
-      answer: record.answer,
-      pool,
-      explanation: `Diese Aussage gehört zur Regel „${record.section.titel}“.`
-    }));
+    for (const record of records) {
+      const pool = records
+        .filter(candidate => candidate.lesson <= record.lesson)
+        .map(candidate => candidate.answer);
+      questions.push(makeQuestion({
+        id: `${record.index}-rule-${key}`,
+        section: record.section,
+        lesson: record.lesson,
+        prompt: `Welche Aussage gehört zu „${record.section.titel}“?`,
+        answer: record.answer,
+        pool,
+        explanation: `Diese Aussage gehört zur Regel „${record.section.titel}“.`
+      }));
+    }
   }
   return questions;
 }

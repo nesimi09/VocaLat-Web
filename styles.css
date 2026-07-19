@@ -162,6 +162,7 @@ button.card:hover { transform: translateY(-2px); border-color: rgba(168,120,51,.
 .lesson-picker-trigger > span { display: grid; gap: 2px; }
 .lesson-picker-trigger small { color: var(--muted); font-size: .72rem; font-weight: 700; }
 .lesson-picker-trigger strong { font-size: .88rem; }
+.lesson-picker-trigger .picker-action { display: block; color: var(--red); font-size: .74rem; font-weight: 800; }
 .lesson-picker-trigger svg { flex: 0 0 auto; fill: none; stroke: var(--red); stroke-width: 1.8; transition: transform .18s ease; }
 .lesson-picker-trigger[aria-expanded="true"] svg { transform: rotate(180deg); }
 .lesson-picker-panel { display: grid; gap: 9px; padding: 10px; border-top: 1px solid var(--line); }
@@ -340,8 +341,11 @@ button.card:hover { transform: translateY(-2px); border-color: rgba(168,120,51,.
 .grammar-practice-entry { display: flex; justify-content: space-between; align-items: center; gap: 20px; padding: 4px 0 24px; border-bottom: 1px solid var(--line); }
 .grammar-practice-entry h2 { margin: 0 0 5px; font-size: 1.25rem; }
 .grammar-practice-entry p { margin: 0; color: var(--muted); }
-.grammar-lesson-control { display: grid; gap: 5px; min-width: 150px; }
-.grammar-lesson-control > span { color: var(--muted); font-size: .75rem; font-weight: 750; }
+.grammar-practice-controls { display: grid; grid-template-columns: minmax(220px, 300px) auto; align-items: start; gap: 10px; }
+.grammar-lesson-picker { width: min(100%, 300px); }
+.grammar-through-control { display: grid; gap: 5px; }
+.grammar-through-control > span { color: var(--muted); font-size: .72rem; font-weight: 750; }
+.grammar-through-control .select { width: 100%; }
 .grammar-category-practice { margin-top: 16px; }
 .grammar-practice { display: grid; gap: 16px; width: min(100%, 720px); margin: 0 auto; }
 .grammar-practice > .text-button { justify-self: start; }
@@ -1102,6 +1106,7 @@ button.course-chip { cursor: pointer; }
 @media (max-width: 700px) {
   .bottom-tabs .nav-link { font-size: .63rem; }
   .grammar-practice-entry { align-items: stretch; flex-direction: column; }
+  .grammar-practice-controls { grid-template-columns: 1fr; }
   .grammar-practice-entry .button { width: 100%; }
   .course-overview-actions { align-items: stretch; flex-direction: column; }
   .course-overview-actions > .button { width: 100%; }

@@ -44,7 +44,7 @@ const state = {
   practiceLessons: "all", practicePickerOpen: false, mode: "typed", practiceSet: [], questionIndex: 0,
   practiceAnswered: 0, practiceCorrect: 0, practiceComplete: false,
   revealed: false, selectedChoice: null, feedback: null, answerRecorded: false, typedAnswer: "",
-  grammarPracticeCategory: null, grammarPracticeMaxLesson: 15, grammarPracticeRound: [], grammarPracticeIndex: 0,
+  grammarPracticeCategory: null, grammarPracticeMaxLesson: 15, grammarPracticeLessons: null, grammarPracticePickerOpen: false, grammarPracticeRound: [], grammarPracticeIndex: 0,
   grammarPracticeSelected: null, grammarPracticeRecorded: false, grammarPracticeCorrect: 0, grammarPracticeComplete: false,
   translationText: "", translationRawText: "", translationImage: null, translationImageUrl: null, translationUsesImage: false,
   translationBusy: false, translationProgress: 0, translationStatus: "", translationError: "",
@@ -1016,8 +1016,28 @@ function removeTranslationImage() {
   renderTranslate();
 }
 
+function selectedGrammarPracticeLessons() {
+  const available = lessons().map(Number);
+  if (state.grammarPracticeLessons === "all") return available;
+  if (Array.isArray(state.grammarPracticeLessons)) {
+    const allowed = new Set(available);
+    return state.grammarPracticeLessons.map(Number).filter(lesson => allowed.has(lesson));
+  }
+  return available.filter(lesson => lesson <= state.grammarPracticeMaxLesson);
+}
+
+function grammarPracticeSelectionLabel() {
+  if (state.grammarPracticeLessons == null) return `Bis Lektion ${state.grammarPracticeMaxLesson}`;
+  if (state.grammarPracticeLessons === "all") return "Alle Lektionen";
+  const selected = selectedGrammarPracticeLessons();
+  if (!selected.length) return "Keine Lektion";
+  if (selected.length === 1) return `Lektion ${selected[0]}`;
+  if (selected.length <= 3) return `Lektionen ${selected.join(", ")}`;
+  return `${selected.length} Lektionen ausgewählt`;
+}
+
 function startGrammarPractice(category = null) {
-  const round = buildGrammarPractice(state.grammar, { category, maxLesson: state.grammarPracticeMaxLesson, limit: 10 });
+  const round = buildGrammarPractice(state.grammar, { category, lessons: selectedGrammarPracticeLessons(), limit: 10 });
   state.grammarPracticeCategory = category;
   state.grammarPracticeRound = round;
   state.grammarPracticeIndex = 0;
@@ -1049,7 +1069,7 @@ function renderGrammarPractice() {
     : "";
   app.innerHTML = `<div class="grammar-practice">
     <button class="text-button" data-grammar-practice-back type="button">← Zur Grammatik</button>
-    <section class="grammar-practice-progress"><div class="card-top"><span>${category ? escapeHtml(category.title) : "Gemischte Grammatik"} · bis Lektion ${state.grammarPracticeMaxLesson}</span><strong>${state.grammarPracticeIndex + 1}/${round.length}</strong></div><div class="progress-track" role="progressbar" aria-label="Übungsfortschritt" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${progress}"><div class="progress-fill" style="width:${progress}%"></div></div></section>
+    <section class="grammar-practice-progress"><div class="card-top"><span>${category ? escapeHtml(category.title) : "Gemischte Grammatik"} · ${escapeHtml(grammarPracticeSelectionLabel())}</span><strong>${state.grammarPracticeIndex + 1}/${round.length}</strong></div><div class="progress-track" role="progressbar" aria-label="Übungsfortschritt" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${progress}"><div class="progress-fill" style="width:${progress}%"></div></div></section>
     <section class="card grammar-question-card"><span class="course-skill-tag">${escapeHtml(question.sectionTitle)} · ab Lektion ${question.lesson}</span><h2>${escapeHtml(question.prompt)}</h2><div class="grammar-choice-list">${question.options.map(option => { const optionState = answerOptionState(option, question.answer, state.grammarPracticeSelected, state.grammarPracticeRecorded); return `<button class="grammar-choice ${optionState}" data-grammar-choice="${escapeHtml(option)}" type="button" ${state.grammarPracticeRecorded ? "disabled" : ""}><span>${escapeHtml(option)}</span>${optionState === "correct" ? `<strong aria-hidden="true">✓</strong>` : optionState === "wrong" ? `<strong aria-hidden="true">✕</strong>` : ""}</button>`; }).join("")}</div>${feedback}</section>
   </div>`;
 }
@@ -1064,8 +1084,10 @@ function renderGrammar() {
     app.innerHTML = `<div class="detail-header"><button class="back button secondary" data-grammar-back type="button">← Alle Kategorien</button><h2>${escapeHtml(cat.title)}</h2><p class="meta">Verwandte Formen und Regeln stehen direkt nacheinander.</p><button class="button grammar-category-practice" data-grammar-practice="${escapeHtml(cat.id)}" type="button">Diese Grammatik üben</button></div><div class="grid two">${items.map(({s,i}, position) => `<button class="card category-card" data-grammar-section="${i}" type="button"><span class="category-icon grammar-sequence-number">${position + 1}</span><span><h3>${escapeHtml(s.titel)}</h3><small class="meta">${escapeHtml(label(s.typ))}</small></span></button>`).join("") || `<div class="empty card">Keine Einträge.</div>`}</div>`;
     return;
   }
-  const grammarLessons = Array.from({ length: 31 }, (_, index) => index + 1);
-  app.innerHTML = `<section class="grammar-practice-entry"><div><h2>Grammatik üben</h2><p>Du bekommst nur Aufgaben zu Grammatik, die bis zu deiner Lektion vorkommt.</p></div><label class="grammar-lesson-control"><span>Aktuelle Lektion</span><select class="select" id="grammar-practice-lesson" aria-label="Aktuelle Lektion für Grammatikübungen">${grammarLessons.map(lesson => `<option value="${lesson}" ${Number(lesson) === Number(state.grammarPracticeMaxLesson) ? "selected" : ""}>Lektion ${lesson}</option>`).join("")}</select></label><button class="button" data-grammar-practice="all" type="button">Übung starten</button></section><div class="section-heading"><h2>Nachschlagen</h2></div><div class="grid two">${CATEGORIES.map(cat => { const count = sections.filter(s => categoryFor(s) === cat.id).length; return count ? `<button class="card category-card" data-category="${cat.id}" type="button"><span class="category-icon">${cat.icon}</span><span><h3>${escapeHtml(cat.title)}</h3><small class="meta">${count} Abschnitte</small></span></button>` : ""; }).join("")}</div>`;
+  const grammarLessons = lessons().map(Number);
+  const selectedGrammarLessons = new Set(selectedGrammarPracticeLessons().map(Number));
+  const grammarSelection = grammarPracticeSelectionLabel();
+  app.innerHTML = `<section class="grammar-practice-entry"><div><h2>Grammatik üben</h2><p>Wähle eine oder mehrere Lektionen für deinen Grammatiktest.</p></div><div class="grammar-practice-controls"><div class="lesson-picker grammar-lesson-picker"><button class="lesson-picker-trigger" data-grammar-picker type="button" aria-expanded="${state.grammarPracticePickerOpen}" aria-controls="grammar-lesson-panel"><span><small>Lektionen</small><strong>${escapeHtml(grammarSelection)}</strong></span><span class="picker-action" aria-hidden="true">${state.grammarPracticePickerOpen ? "Schließen" : "Ändern"}</span></button><div class="lesson-picker-panel" id="grammar-lesson-panel" ${state.grammarPracticePickerOpen ? "" : "hidden"}><label class="grammar-through-control"><span>Bis zur aktuellen Lektion</span><select class="select" id="grammar-practice-lesson" aria-label="Aktuelle Lektion für Grammatikübungen">${grammarLessons.map(lesson => `<option value="${lesson}" ${Number(lesson) === Number(state.grammarPracticeMaxLesson) ? "selected" : ""}>Lektion ${lesson}</option>`).join("")}</select></label><div class="lesson-picker-actions"><button class="text-button" data-grammar-select-all type="button">Alle</button><button class="text-button" data-grammar-clear type="button">Keine</button></div><div class="lesson-checkbox-grid" role="group" aria-label="Lektionen für den Grammatiktest auswählen">${grammarLessons.map(lesson => `<label class="lesson-checkbox"><input type="checkbox" data-grammar-practice-lesson value="${lesson}" aria-label="Lektion ${lesson}" ${selectedGrammarLessons.has(lesson) ? "checked" : ""}><span aria-hidden="true">${lesson}</span></label>`).join("")}</div><button class="button secondary lesson-picker-done" data-grammar-picker-close type="button">Fertig</button></div></div><button class="button" data-grammar-practice="all" type="button" ${selectedGrammarLessons.size ? "" : "disabled"}>Grammatiktest starten</button></div></section><div class="section-heading"><h2>Nachschlagen</h2></div><div class="grid two">${CATEGORIES.map(cat => { const count = sections.filter(s => categoryFor(s) === cat.id).length; return count ? `<button class="card category-card" data-category="${cat.id}" type="button"><span class="category-icon">${cat.icon}</span><span><h3>${escapeHtml(cat.title)}</h3><small class="meta">${count} Abschnitte</small></span></button>` : ""; }).join("")}</div>`;
 }
 
 function renderGrammarDetail(section) {
@@ -1175,6 +1197,32 @@ document.addEventListener("click", event => {
   if (target.hasAttribute("data-practice-picker-close")) { state.practicePickerOpen = false; startPractice(); render(); requestAnimationFrame(() => document.querySelector("[data-practice-picker]")?.focus()); announce("Lektionsauswahl übernommen."); }
   if (target.hasAttribute("data-practice-select-all")) { state.practiceLessons = "all"; state.practicePickerOpen = true; render(); requestAnimationFrame(() => document.querySelector("[data-practice-select-all]")?.focus()); announce("Alle Lektionen ausgewählt."); }
   if (target.hasAttribute("data-practice-clear")) { state.practiceLessons = []; state.practicePickerOpen = true; render(); requestAnimationFrame(() => document.querySelector("[data-practice-clear]")?.focus()); announce("Lektionsauswahl geleert."); }
+  if (target.hasAttribute("data-grammar-picker")) {
+    const wasOpen = state.grammarPracticePickerOpen;
+    state.grammarPracticePickerOpen = !wasOpen;
+    render();
+    requestAnimationFrame(() => document.querySelector(wasOpen ? "[data-grammar-picker]" : "[data-grammar-practice-lesson]")?.focus());
+  }
+  if (target.hasAttribute("data-grammar-picker-close")) {
+    state.grammarPracticePickerOpen = false;
+    render();
+    requestAnimationFrame(() => document.querySelector("[data-grammar-picker]")?.focus());
+    announce("Lektionsauswahl für den Grammatiktest übernommen.");
+  }
+  if (target.hasAttribute("data-grammar-select-all")) {
+    state.grammarPracticeLessons = "all";
+    state.grammarPracticePickerOpen = true;
+    render();
+    requestAnimationFrame(() => document.querySelector("[data-grammar-select-all]")?.focus());
+    announce("Alle Lektionen für den Grammatiktest ausgewählt.");
+  }
+  if (target.hasAttribute("data-grammar-clear")) {
+    state.grammarPracticeLessons = [];
+    state.grammarPracticePickerOpen = true;
+    render();
+    requestAnimationFrame(() => document.querySelector("[data-grammar-clear]")?.focus());
+    announce("Lektionsauswahl für den Grammatiktest geleert.");
+  }
   if (target.id === "shuffle") { startPractice(); render(); }
   if (target.id === "reveal") { state.revealed = true; render(); }
   if (target.dataset.result && !state.answerRecorded) {
@@ -1258,7 +1306,23 @@ document.addEventListener("change", event => {
   if (event.target.id === "favorite-filter") { state.favoritesOnly = event.target.checked; render(); }
   if (event.target.id === "grammar-practice-lesson") {
     state.grammarPracticeMaxLesson = Number(event.target.value);
+    state.grammarPracticeLessons = null;
+    state.grammarPracticePickerOpen = true;
+    render();
+    requestAnimationFrame(() => document.querySelector("#grammar-practice-lesson")?.focus());
     announce(`Grammatikübungen sind jetzt auf Lektion ${state.grammarPracticeMaxLesson} begrenzt.`);
+  }
+  if (event.target.matches?.("[data-grammar-practice-lesson]")) {
+    const changedLesson = Number(event.target.value);
+    const selected = new Set(selectedGrammarPracticeLessons().map(Number));
+    if (event.target.checked) selected.add(changedLesson); else selected.delete(changedLesson);
+    const available = lessons().map(Number);
+    const ordered = available.filter(lesson => selected.has(lesson));
+    state.grammarPracticeLessons = ordered.length === available.length ? "all" : ordered;
+    state.grammarPracticePickerOpen = true;
+    render();
+    requestAnimationFrame(() => document.querySelector(`[data-grammar-practice-lesson][value="${changedLesson}"]`)?.focus());
+    announce(ordered.length === 1 ? "1 Lektion für den Grammatiktest ausgewählt." : `${ordered.length} Lektionen für den Grammatiktest ausgewählt.`);
   }
   if (event.target.matches?.("[data-practice-lesson]")) {
     const changedLesson = event.target.value;
