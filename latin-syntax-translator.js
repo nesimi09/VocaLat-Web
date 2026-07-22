@@ -17,13 +17,14 @@ import {
   tokenizeTranslationInput
 } from "./latin-analysis.js";
 import { SOURCE_WEIGHTS, SUBORDINATORS } from "./latin-language-data.js";
-import { generateGermanSentence, postprocessGerman } from "./german-generator.js";
+import { generateGermanSentence, postprocessGerman, realizeGermanClausePlan } from "./german-generator.js";
 
 export {
   generateGermanSentence,
   interpretLatinGrammar,
   parseLatinSyntax,
   postprocessGerman,
+  realizeGermanClausePlan,
   resolveMorphology,
   selectContextualMeanings,
   tokenizeTranslationInput

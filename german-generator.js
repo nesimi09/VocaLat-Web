@@ -21,6 +21,7 @@ import {
 import { caseIncludes, firstCase, isAdverb, isEsse, isFinite, isModifier, isNominal, isProper, normalizeLatin, partOf } from "./latin-analysis.js";
 
 const NEGATIONS = new Set(["non", "haud"]);
+const POLAR_QUESTION_PARTICLES = new Set(["ne", "nonne", "num", "utrum"]);
 const POSSESSIVE_STEMS = Object.freeze({ meus: "mein", tuus: "dein", suus: "sein", noster: "unser", vester: "euer" });
 
 /** Stage 6: realise an interpreted semantic structure as a German sentence. */
@@ -31,7 +32,8 @@ export function generateGermanSentence(semantics, options = {}) {
   const leadingCum = inferLeadingCumClauses(context);
 
   let text = "";
-  if (semantics.type === "question" && semantics.clauses.length === 1 && context.words.some(word => INTERROGATIVE_FORMS.has(word.normalized))) text = renderDirectQuestion(context);
+  if (semantics.type === "question" && semantics.clauses.length === 1 && context.words.some(word => INTERROGATIVE_FORMS.has(word.normalized) && !POLAR_QUESTION_PARTICLES.has(word.normalized))) text = renderDirectQuestion(context);
+  else if (semantics.type === "question" && semantics.clauses.length === 1) text = renderPolarQuestion(context);
   else if (construction("indirect-question") || semantics.clauses.some(clause => clause.type === "indirect-question")) text = renderIndirectQuestion(context);
   else if (construction("free-relative")) text = renderFreeRelative(context, construction("free-relative"));
   else if (construction("aci")) text = renderAci(context, construction("aci"));
@@ -70,18 +72,19 @@ function renderClauseComplex(context) {
   const nonCoordinates = context.semantics.clauses.filter(clause => clause !== main && clause.type !== "coordinate");
   if (coordinates.length && !nonCoordinates.length) {
     const subjectIndexes = main.roles.subject || [];
-    const mainText = renderClause(context, main, {});
-    const rendered = coordinates.map(clause => {
+    let text = renderClause(context, main, {});
+    let previousClause = main;
+    for (const clause of coordinates) {
       const inheritedSubject = !clause.roles.subject.length && (subjectIndexes.length > 0 || main.headIndex != null);
-      return renderClause(context, clause, { omitSubject: inheritedSubject });
-    });
-    if (rendered.length === 1) {
-      let connector = coordinates[0].conjunction || "und";
-      const leftNegated = main.tokenIndexes.some(index => NEGATIONS.has(context.words[index].normalized));
-      if (leftNegated && ["sed", "at", "autem"].includes(coordinates[0].marker)) connector = "sondern";
-      return `${mainText}, ${connector} ${lowerFirst(rendered[0])}`;
+      const rendered = renderClause(context, clause, { omitSubject: inheritedSubject });
+      let connector = clause.conjunction || COORDINATORS[clause.marker] || "und";
+      const leftNegated = previousClause.tokenIndexes.some(index => NEGATIONS.has(context.words[index].normalized));
+      if (leftNegated && ["sed", "at", "autem"].includes(clause.marker)) connector = "sondern";
+      const comma = ["aber", "sondern", "denn", "doch", "jedoch"].includes(connector) || !connector;
+      text += `${comma ? "," : ""} ${connector || ""} ${lowerFirst(rendered)}`.replace(/\s+/g, " ");
+      previousClause = clause;
     }
-    return `${mainText}, ${rendered.slice(0, -1).map(lowerFirst).join(", ")} und ${lowerFirst(rendered.at(-1))}`;
+    return text;
   }
   const dependent = context.semantics.clauses.find(clause => clause !== main);
   if (!dependent) return renderClause(context, main, {});
@@ -190,6 +193,8 @@ function renderClause(context, clause, options = {}) {
   const finite = clause.headIndex != null ? words[clause.headIndex] : clause.tokenIndexes.map(index => words[index]).find(isFinite);
   if (!finite) return renderEllipticalClause(context, clause, consumed);
   consumed.add(finite.index);
+  const idiom = context.semantics.constructions?.find(item => item.type === "idiom" && item.headIndex === finite.index);
+  if (idiom) idiom.indexes.forEach(index => consumed.add(index));
 
   const vocativeText = clause.roles.vocative
     .filter(index => allowed.has(index) && !consumed.has(index))
@@ -226,8 +231,6 @@ function renderClause(context, clause, options = {}) {
       counterfactual: clause.type === "conditional" || context.semantics.clauses.some(item => item.type === "conditional" && words[item.headIndex]?.morphology?.mood === "subjunctive")
     });
 
-  const idiom = context.semantics.constructions?.find(item => item.type === "idiom" && item.headIndex === finite.index);
-  if (idiom) idiom.indexes.forEach(index => consumed.add(index));
   const effectivePredicate = idiom ? conjugateGerman(idiom.german, agreement, germanTense(finite.morphology, true)) : predicate;
   const expressions = context.semantics.constructions?.filter(item =>
     item.type === "expression" && item.kind !== "interrogative" && item.indexes.every(index => allowed.has(index))
@@ -244,56 +247,67 @@ function renderClause(context, clause, options = {}) {
     .filter(index => index != null) || []);
   const adverbs = [...expressionAdverbs, ...renderAdverbials(context, clause.roles.adverbial.filter(index =>
     !consumed.has(index) && allowed.has(index) && !nonFiniteModifierIndexes.has(index) && !comparisonMarkerIndexes.has(index)
-  ), consumed)];
+  ), consumed)].map(text => germanConstituent(text, "adverbial"));
   const comparisonConstructions = context.semantics.constructions?.filter(item =>
     item.type === "comparison" && item.clauseId === clause.id && item.standardIndex != null
   ) || [];
   const comparisonStandards = new Set(comparisonConstructions.map(item => item.standardIndex));
-  const indirect = clause.roles.indirectObject.filter(index => !consumed.has(index)).map(index => renderNominal(context, index, "dative", consumed));
+  const indirect = clause.roles.indirectObject.filter(index => !consumed.has(index)).map(index =>
+    germanConstituent(renderNominal(context, index, "dative", consumed), "indirect-object", words[index])
+  );
   const direct = clause.roles.directObject.filter(index => !consumed.has(index) && !comparisonStandards.has(index)).map(index => {
     const object = words[index];
-    if (VERB_CLASSES.motion.has(finite.lemma) && isProper(object)) return `nach ${renderNominal(context, index, "nominative", consumed)}`;
+    if (VERB_CLASSES.motion.has(finite.lemma) && isProper(object)) {
+      return germanConstituent(`nach ${renderNominal(context, index, "nominative", consumed)}`, "direction", object);
+    }
     const germanCase = VERB_FRAMES[finite.lemma]?.germanDirectCase || "accusative";
-    return renderNominal(context, index, germanCase, consumed);
+    return germanConstituent(renderNominal(context, index, germanCase, consumed), "direct-object", object);
   });
   const frame = VERB_FRAMES[finite.lemma];
-  const ablativeParts = clause.roles.ablative.filter(index => !consumed.has(index) && !comparisonStandards.has(index)).map(index => {
+  const ablatives = clause.roles.ablative.filter(index => !consumed.has(index) && !comparisonStandards.has(index)).map(index => {
     const nominal = renderNominal(context, index, frame?.germanAblativeCase || "dative", consumed);
-    if (frame?.germanAblativePreposition) return contractPreposition(`${frame.germanAblativePreposition} ${nominal}`);
-    if (frame?.germanAblativeCase) return nominal;
-    return defaultAblativePhrase(words[index], nominal);
+    if (frame?.germanAblativePreposition) {
+      const text = contractPreposition(`${frame.germanAblativePreposition} ${nominal}`);
+      return germanConstituent(text, prepositionalKind(frame.germanAblativePreposition, words[index]), words[index]);
+    }
+    if (frame?.germanAblativeCase) return germanConstituent(nominal, "case-complement", words[index]);
+    const text = defaultAblativePhrase(words[index], nominal);
+    return germanConstituent(text, prepositionalKind(text.split(/\s+/u)[0], words[index]), words[index]);
   });
-  const ablatives = ablativeParts.length ? [joinGerman(ablativeParts, "und")] : [];
-  const prepositionalParts = clause.roles.prepositional.filter(item => !consumed.has(item.prepositionIndex) && !consumed.has(item.objectIndex)).map(item => {
+  const prepositional = clause.roles.prepositional.filter(item => !consumed.has(item.prepositionIndex) && !consumed.has(item.objectIndex)).map(item => {
     consumed.add(item.prepositionIndex);
     const noun = renderNominal(context, item.objectIndex, item.germanCase || "dative", consumed);
-    return contractPreposition(`${item.german} ${noun}`);
+    return germanConstituent(
+      contractPreposition(`${item.german} ${noun}`),
+      prepositionalKind(item.german, words[item.objectIndex]),
+      words[item.objectIndex]
+    );
   });
-  const prepositional = prepositionalParts.length > 1 ? [joinGerman(prepositionalParts, "und")] : prepositionalParts;
   const partitiveConstructions = context.semantics.constructions?.filter(item =>
     item.type === "partitive-genitive" && item.clauseId === clause.id
   ) || [];
-  const partitives = partitiveConstructions.map(item => renderPartitiveGenitive(context, item, consumed)).filter(Boolean);
+  const partitives = partitiveConstructions.map(item => germanConstituent(renderPartitiveGenitive(context, item, consumed), "case-complement")).filter(item => item.text);
   const partitiveIndexes = new Set(partitiveConstructions.flatMap(item => item.memberIndexes || []));
-  const genitives = clause.roles.genitive.filter(index => !consumed.has(index) && !partitiveIndexes.has(index)).map(index => renderNominal(context, index, "genitive", consumed));
+  const genitives = clause.roles.genitive.filter(index => !consumed.has(index) && !partitiveIndexes.has(index)).map(index =>
+    germanConstituent(renderNominal(context, index, "genitive", consumed), "case-complement", words[index])
+  );
   const predicateNominals = isEsse(finite) ? clause.tokenIndexes
     .filter(index => !consumed.has(index) && !comparisonStandards.has(index) && isNominal(words[index]) && caseIncludes(words[index].morphology, "nominative"))
-    .map(index => renderNominal(context, index, "nominative", consumed, { indefinite: true }))
-    .filter(Boolean) : [];
+    .map(index => germanConstituent(renderNominal(context, index, "nominative", consumed, { indefinite: true }), "predicate"))
+    .filter(item => item.text) : [];
   const comparisons = comparisonConstructions.map(item => {
     if (item.markerIndex != null) consumed.add(item.markerIndex);
     const standard = renderNominal(context, item.standardIndex, "nominative", consumed, { articlelessProper: true });
-    return `als ${standard}`;
-  }).filter(Boolean) || [];
+    return germanConstituent(`als ${standard}`, "comparison");
+  }).filter(item => item.text) || [];
   const predicateAdjectives = clause.tokenIndexes.filter(index => !consumed.has(index) && partOf(words[index]) === "adj").map(index => {
     consumed.add(index);
-    return germanAdjectiveDegree(words[index], { predicate: true });
+    return germanConstituent(germanAdjectiveDegree(words[index], { predicate: true }), "predicate", words[index]);
   });
   const complementaryInfinitives = context.semantics.constructions?.filter(item => item.type === "complementary-infinitive" && item.governingIndex === finite.index && allowed.has(item.infinitiveIndex) && !consumed.has(item.infinitiveIndex)) || [];
   const infinitives = complementaryInfinitives.map(item => {
     consumed.add(item.infinitiveIndex);
-    const value = germanInfinitive(words[item.infinitiveIndex]);
-    return item.withZu ? germanZuInfinitive(value) : value;
+    return renderGermanInfinitiveGroup(words[item.infinitiveIndex], { withZu: item.withZu });
   }).filter(Boolean);
   const specifications = context.semantics.constructions?.filter(item =>
     item.type === "supine-specification"
@@ -307,20 +321,26 @@ function renderClause(context, clause, options = {}) {
     item.type === "gerund"
     && allowed.has(item.gerundIndex)
     && !consumed.has(item.gerundIndex)
-  ).map(item => renderGerundCase(context, item, consumed)).filter(Boolean) || [];
+  ).map(item => germanConstituent(renderGerundCase(context, item, consumed), "case-complement")).filter(item => item.text) || [];
   const substantivizedParticiples = context.semantics.constructions?.filter(item =>
     item.type === "substantivized-participle"
     && item.clauseId === clause.id
     && !consumed.has(item.participleIndex)
   ).map(item => {
     consumed.add(item.participleIndex);
-    return renderSubstantivizedParticiple(words[item.participleIndex], item.grammaticalCase);
-  }).filter(Boolean) || [];
+    return germanConstituent(renderSubstantivizedParticiple(words[item.participleIndex], item.grammaticalCase), "case-complement", words[item.participleIndex]);
+  }).filter(item => item.text) || [];
   const negated = clause.tokenIndexes.some(index => NEGATIONS.has(words[index].normalized));
   clause.tokenIndexes.filter(index => NEGATIONS.has(words[index].normalized)).forEach(index => consumed.add(index));
-  const remaining = clause.tokenIndexes.filter(index => !consumed.has(index) && !isStructural(words[index]) && !isFinite(words[index])).map(index => renderLooseWord(context, index, consumed)).filter(Boolean);
-  const complements = [...adverbs, ...indirect, ...direct, ...ablatives, ...prepositional, ...partitives, ...genitives, ...predicateNominals, ...predicateAdjectives, ...comparisons, ...gerunds, ...substantivizedParticiples, ...remaining].filter(Boolean);
-  const verb = splitGermanVerb(effectivePredicate);
+  const remaining = clause.tokenIndexes.filter(index => !consumed.has(index) && !isStructural(words[index]) && !isFinite(words[index])).map(index =>
+    germanConstituent(renderLooseWord(context, index, consumed), "remainder", words[index])
+  ).filter(item => item.text);
+  const middleField = orderGermanConstituents([
+    ...adverbs, ...indirect, ...direct, ...ablatives, ...prepositional, ...partitives,
+    ...genitives, ...gerunds, ...substantivizedParticiples, ...remaining
+  ]);
+  const predicateField = orderGermanConstituents([...predicateNominals, ...predicateAdjectives, ...comparisons]);
+  const verb = buildGermanVerbComplex(effectivePredicate, finite, agreement, infinitives, specifications);
 
   const decorate = value => {
     let text = value;
@@ -329,12 +349,134 @@ function renderClause(context, clause, options = {}) {
     return text;
   };
 
-  if (options.subordinate) {
-    const ending = verb.separable && verb.tail ? `${verb.tail}${verb.head}` : [verb.tail, verb.head].filter(Boolean).join(" ");
-    return decorate([subjectText, verb.middle, ...complements, negated ? "nicht" : "", ...infinitives, ...specifications, ending].filter(Boolean).join(" "));
+  return decorate(realizeGermanClausePlan({
+    subject: subjectText,
+    verb,
+    middleField,
+    predicateField,
+    negated,
+    subordinate: Boolean(options.subordinate),
+    inverted: Boolean(options.inverted)
+  }));
+}
+
+function germanConstituent(text, kind, word = null) {
+  const value = String(text || "").trim();
+  return {
+    text: value,
+    kind,
+    pronoun: partOf(word) === "pron",
+    sortKey: `${normalizeLatin(word?.lemma || "")}\u0000${value.toLocaleLowerCase("de")}`
+  };
+}
+
+function prepositionalKind(preposition, word) {
+  const value = String(preposition || "").toLocaleLowerCase("de");
+  const lemma = normalizeLatin(word?.lemma || "");
+  if (["annus", "dies", "hora", "nox", "tempus"].includes(lemma)) return "temporal";
+  if (["wegen", "aufgrund"].includes(value)) return "causal";
+  if (["mit", "ohne", "durch"].includes(value)) return "modal";
+  if (["aus", "von"].includes(value)) return "source";
+  if (["zu", "nach", "gegen", "durch"].includes(value)) return "direction";
+  return "location";
+}
+
+function constituentRank(item) {
+  if (item.pronoun && item.kind === "direct-object") return 10;
+  if (item.pronoun && item.kind === "indirect-object") return 11;
+  if (item.kind === "indirect-object") return 20;
+  if (item.kind === "adverbial") return adverbialRank(item.text);
+  if (item.kind === "temporal") return 30;
+  if (item.kind === "causal") return 40;
+  if (item.kind === "modal") return 50;
+  if (item.kind === "direct-object") return 25;
+  if (item.kind === "case-complement") return 65;
+  if (item.kind === "source") return 70;
+  if (item.kind === "location") return 80;
+  if (item.kind === "direction") return 90;
+  if (item.kind === "predicate") return 100;
+  if (item.kind === "comparison") return 110;
+  return 75;
+}
+
+function adverbialRank(text) {
+  const value = String(text || "").toLocaleLowerCase("de");
+  if (/\b(?:aus diesem grund|deshalb|daher|darum|folglich)\b/u.test(value)) return 22;
+  if (/^(?:auch|nur|sogar|ebenfalls)$/u.test(value)) return 24;
+  if (/\b(?:heute|gestern|morgen|jetzt|damals|danach|dann|plötzlich|schon|immer|oft|wieder)\b/u.test(value)) return 30;
+  if (/\b(?:hier|dort|überall|nirgends|wohin|woher)\b/u.test(value)) return 80;
+  return 50;
+}
+
+function orderGermanConstituents(items) {
+  return items
+    .filter(item => item?.text)
+    .sort((left, right) => constituentRank(left) - constituentRank(right)
+      || left.sortKey.localeCompare(right.sortKey, "de"));
+}
+
+function buildGermanVerbComplex(predicate, finite, agreement, infinitives = [], specifications = []) {
+  const parsed = splitGermanVerb(predicate);
+  const lexical = germanInfinitive(finite);
+  const morphology = finite?.morphology || {};
+  const modalPerfect = infinitives.length > 0
+    && isGermanModal(lexical)
+    && ["perfect", "pluperfect"].includes(morphology.tense)
+    && isGermanHaveForm(parsed.head);
+  if (modalPerfect) {
+    return {
+      head: parsed.head,
+      middle: parsed.middle,
+      rightBracket: [...infinitives, lexical, ...specifications].filter(Boolean),
+      separable: false,
+      upperField: true
+    };
   }
-  if (options.inverted) return decorate([verb.head, subjectText, verb.middle, ...complements, negated ? "nicht" : "", ...infinitives, ...specifications, verb.tail].filter(Boolean).join(" "));
-  return decorate([subjectText, verb.head, verb.middle, ...complements, negated ? "nicht" : "", ...infinitives, ...specifications, verb.tail].filter(Boolean).join(" "));
+  return {
+    head: parsed.head,
+    middle: parsed.middle,
+    rightBracket: [...infinitives, ...specifications, parsed.tail].filter(Boolean),
+    separable: parsed.separable,
+    upperField: false
+  };
+}
+
+function isGermanHaveForm(value) {
+  return /^(?:habe|hast|hat|haben|habt|hatte|hattest|hatten|hattet|hätte|hättest|hätten|hättet)$/u.test(String(value || ""));
+}
+
+/**
+ * Realise an explicit German topological-field plan. The input contains no
+ * Latin positions: constituents are already classified by German syntax.
+ */
+export function realizeGermanClausePlan(plan = {}) {
+  const verb = plan.verb || {};
+  const middleField = plan.middleField || [];
+  const predicateField = plan.predicateField || [];
+  const beforeNegation = middleField.filter(item => !["location", "direction"].includes(item.kind));
+  const afterNegation = middleField.filter(item => ["location", "direction"].includes(item.kind));
+  const middle = [
+    verb.middle,
+    ...beforeNegation.map(item => item.text),
+    plan.negated ? "nicht" : "",
+    ...afterNegation.map(item => item.text),
+    ...predicateField.map(item => item.text)
+  ].filter(Boolean);
+  const rightBracket = (verb.rightBracket || []).filter(Boolean);
+
+  if (plan.subordinate) {
+    if (verb.separable && rightBracket.length === 1) {
+      return [plan.subject, ...middle, `${rightBracket[0]}${verb.head}`].filter(Boolean).join(" ");
+    }
+    const ending = verb.upperField
+      ? [verb.head, ...rightBracket]
+      : [...rightBracket, verb.head];
+    return [plan.subject, ...middle, ...ending].filter(Boolean).join(" ");
+  }
+  if (plan.inverted) {
+    return [verb.head, plan.subject, ...middle, ...rightBracket].filter(Boolean).join(" ");
+  }
+  return [plan.subject, verb.head, ...middle, ...rightBracket].filter(Boolean).join(" ");
 }
 
 function dependentExclusionClosure(context, initial) {
@@ -561,6 +703,28 @@ function germanZuInfinitive(infinitive) {
   return reflexive ? `sich ${result}` : result;
 }
 
+function renderGermanInfinitiveGroup(word, options = {}) {
+  const lexical = germanInfinitive(word);
+  if (!lexical) return "";
+  const morphology = word?.morphology || {};
+  const deponent = morphology.deponent
+    || morphology.semideponent
+    || morphology.verbClass === "deponent"
+    || morphology.lexicalVoice === "deponent";
+  const passive = morphology.voice === "passive" && !deponent;
+  const perfect = morphology.tense === "perfect" || morphology.tense === "pluperfect";
+  let group;
+  if (passive && perfect) group = `${pastParticiple(lexical)} worden ${options.withZu ? "zu sein" : "sein"}`;
+  else if (passive) group = `${pastParticiple(lexical)} ${options.withZu ? "zu werden" : "werden"}`;
+  else if (perfect) {
+    const auxiliary = movementVerb(lexical) || lexical === "sein" ? "sein" : "haben";
+    group = `${pastParticiple(lexical)} ${options.withZu ? `zu ${auxiliary}` : auxiliary}`;
+  } else if (morphology.tense === "future" || morphology.tense === "future-perfect") {
+    group = `${lexical} ${options.withZu ? "zu werden" : "werden"}`;
+  } else group = options.withZu ? germanZuInfinitive(lexical) : lexical;
+  return group.replace(/\s+/gu, " ").trim();
+}
+
 function isLexicallyActiveParticiple(word) {
   return Boolean(word?.morphology?.deponent || word?.morphology?.semideponent || word?.morphology?.lexicalVoice === "deponent" || word?.morphology?.verbClass === "deponent");
 }
@@ -657,6 +821,17 @@ function renderDirectQuestion(context) {
   });
   const vocative = vocativeIndexes.map(index => renderNominal(context, index, "nominative", new Set(), { articlelessProper: true })).filter(Boolean).join(" und ");
   return `${capitalize(questionWord)}${vocative ? `, ${vocative},` : ""} ${lowerFirst(body)}`;
+}
+
+function renderPolarQuestion(context) {
+  const clause = context.semantics.clauses[0];
+  if (!clause) return "";
+  const particles = context.words
+    .filter(word => POLAR_QUESTION_PARTICLES.has(word.normalized))
+    .map(word => word.index);
+  const body = renderClause(context, clause, { inverted: true, exclude: new Set(particles) });
+  const expectsAgreement = particles.some(index => context.words[index]?.normalized === "nonne");
+  return expectsAgreement ? `${body} nicht` : body;
 }
 
 function renderPartitiveGenitive(context, construction, consumed) {
@@ -758,7 +933,9 @@ function renderNominal(context, index, grammaticalCase, consumed = new Set(), op
     }
     return withDependentGenitives(renderPronoun(word, grammaticalCase));
   }
-  const substantive = SUBSTANTIVIZED_ADJECTIVES[word.lemma];
+  const substantive = (partOf(word) === "adj" || word.morphology?.substantivized)
+    ? SUBSTANTIVIZED_ADJECTIVES[word.lemma]
+    : null;
   if (substantive) {
     const value = word.morphology.number === "plural" ? substantive.plural : substantive.singular;
     return withDependentGenitives(substantive.articleless
@@ -774,19 +951,21 @@ function renderNominal(context, index, grammaticalCase, consumed = new Set(), op
     if (!modifiers.length) return withDependentGenitives(ethnonym ? declineProperEthnonym(name, grammaticalCase) : name);
     const universal = modifiers.find(modifierIndex => ["omnis", "totus"].includes(context.words[modifierIndex].lemma));
     if (word.morphology?.number === "plural" && universal != null) return withDependentGenitives(`alle ${name}`);
-    const hasArticlelessDeterminer = modifiers.some(modifierIndex => {
+    const orderedModifiers = orderGermanModifiers(modifiers, context.words);
+    const hasArticlelessDeterminer = orderedModifiers.some(modifierIndex => {
       const modifier = context.words[modifierIndex];
       return partOf(modifier) === "num" || isAdjectivalDeterminer(modifier) || Boolean(POSSESSIVE_STEMS[modifier.lemma]);
     });
     const article = word.morphology?.number === "plural" && !hasArticlelessDeterminer
       ? ethnonym && grammaticalCase === "dative" ? "den" : ethnonym && grammaticalCase === "genitive" ? "der" : "die"
       : "";
-    const modifierText = modifiers.map(modifierIndex => {
+    const adjectiveDeclension = modifierDeclensionClass(orderedModifiers, context.words, article);
+    const modifierText = orderedModifiers.map(modifierIndex => {
       const modifier = context.words[modifierIndex];
       if (partOf(modifier) === "num") return modifier.sense || firstSense(modifier);
       if (isAdjectivalDeterminer(modifier)) return renderAdjectivalDeterminer(modifier, grammaticalCase, word.morphology?.gender || "m", word.morphology?.number || "singular");
       if (POSSESSIVE_STEMS[modifier.lemma]) return inflectPossessive(POSSESSIVE_STEMS[modifier.lemma], grammaticalCase, word.morphology?.gender || "m", word.morphology?.number || "singular");
-      return inflectAdjective(germanAdjectiveDegree(modifier), grammaticalCase, word.morphology?.number === "plural" ? "plural" : word.morphology?.gender || "m", word.morphology?.number || "singular", Boolean(article));
+      return inflectAdjective(germanAdjectiveDegree(modifier), grammaticalCase, word.morphology?.number === "plural" ? "plural" : word.morphology?.gender || "m", word.morphology?.number || "singular", adjectiveDeclension);
     }).filter(Boolean).join(" ");
     const declinedName = ethnonym && grammaticalCase === "dative" && !/[ns]$/iu.test(name) ? `${name}n` : name;
     return withDependentGenitives([article, modifierText, declinedName].filter(Boolean).join(" "));
@@ -795,7 +974,8 @@ function renderNominal(context, index, grammaticalCase, consumed = new Set(), op
   let meaning = cleanNounMeaning(word.sense || word.meaning || firstSense(word) || `[${word.raw}]`);
   let { article, noun, gender } = dissectNoun(meaning, word);
   const number = word.morphology.number || "singular";
-  const articlelessModifier = modifiers.some(modifierIndex => {
+  const orderedModifiers = orderGermanModifiers(modifiers, context.words);
+  const articlelessModifier = orderedModifiers.some(modifierIndex => {
     const modifier = context.words[modifierIndex];
     return partOf(modifier) === "num" || isAdjectivalDeterminer(modifier) || Boolean(POSSESSIVE_STEMS[modifier.lemma]) || ["aliquot", "multus", "nonnullus", "paucus", "plures", "quot", "tot"].includes(modifier.lemma);
   });
@@ -803,24 +983,27 @@ function renderNominal(context, index, grammaticalCase, consumed = new Set(), op
   if (options.definite && !article) article = gender === "f" ? "die" : gender === "n" ? "das" : "der";
   if (articlelessModifier) article = "";
   if (number === "plural") {
-    article = articlelessModifier ? "" : grammaticalCase === "dative" ? "den" : grammaticalCase === "genitive" ? "der" : "die";
+    article = articlelessModifier || options.indefinite || options.articleless
+      ? ""
+      : grammaticalCase === "dative" ? "den" : grammaticalCase === "genitive" ? "der" : "die";
     noun = germanPlural(noun, gender);
     if (grammaticalCase === "dative" && !noun.endsWith("n") && !noun.endsWith("s")) noun += "n";
     gender = "plural";
   } else {
-    article = articlelessModifier ? "" : declineArticle(article || inferArticle(noun, word), grammaticalCase, gender);
+    article = articlelessModifier || options.articleless ? "" : declineArticle(article || inferArticle(noun, word), grammaticalCase, gender);
     noun = declineGermanNoun(noun, grammaticalCase, gender);
   }
-  const adjectiveText = modifiers.map(modifierIndex => {
+  const adjectiveDeclension = modifierDeclensionClass(orderedModifiers, context.words, article);
+  const adjectiveText = orderedModifiers.map(modifierIndex => {
     if (gerundiveModifiers.includes(modifierIndex)) {
-      return inflectAdjective(attributiveGerundiveStem(context.words[modifierIndex]), grammaticalCase, gender, number, Boolean(article));
+      return inflectAdjective(attributiveGerundiveStem(context.words[modifierIndex]), grammaticalCase, gender, number, adjectiveDeclension);
     }
     const modifier = context.words[modifierIndex];
     if (partOf(modifier) === "num") return modifier.sense || firstSense(modifier);
     if (isAdjectivalDeterminer(modifier)) return renderAdjectivalDeterminer(modifier, grammaticalCase, gender, number);
     if (POSSESSIVE_STEMS[modifier.lemma]) return inflectPossessive(POSSESSIVE_STEMS[modifier.lemma], grammaticalCase, gender, number);
     const stem = ["omnis", "totus"].includes(modifier.lemma) ? "ganz" : germanAdjectiveDegree(modifier);
-    return inflectAdjective(stem, grammaticalCase, gender, number, Boolean(article));
+    return inflectAdjective(stem, grammaticalCase, gender, number, adjectiveDeclension);
   }).join(" ");
   return withDependentGenitives([article, adjectiveText, noun].filter(Boolean).join(" "));
 }
@@ -831,6 +1014,25 @@ function isAdjectivalDeterminer(word) {
     || ["adjectival", "demonstrative"].includes(word.morphology?.pronounKind)
     || ["hic", "ille", "iste", "ipse", "idem", "is"].includes(word.lemma)
   );
+}
+
+function orderGermanModifiers(indexes, words) {
+  return [...indexes].sort((left, right) => germanModifierRank(words[left]) - germanModifierRank(words[right])
+    || normalizeLatin(words[left]?.lemma || "").localeCompare(normalizeLatin(words[right]?.lemma || ""), "de"));
+}
+
+function germanModifierRank(word) {
+  if (isAdjectivalDeterminer(word) || POSSESSIVE_STEMS[word?.lemma]) return 0;
+  if (partOf(word) === "num") return 10;
+  if (["omnis", "totus", "aliquot", "multus", "nonnullus", "paucus", "plures", "quot", "tot"].includes(word?.lemma)) return 20;
+  return 30;
+}
+
+function modifierDeclensionClass(indexes, words, article) {
+  if (indexes.some(index => isAdjectivalDeterminer(words[index]))) return "weak";
+  if (indexes.some(index => POSSESSIVE_STEMS[words[index]?.lemma])) return "mixed";
+  if (/^(?:ein|kein)/iu.test(String(article || ""))) return "mixed";
+  return article ? "weak" : "strong";
 }
 
 function renderAdjectivalDeterminer(word, grammaticalCase, gender, number) {
@@ -952,6 +1154,7 @@ function renderFiniteVerb(context, word, agreement, options = {}) {
   const infinitive = germanInfinitive(word);
   if (!infinitive) return `[${word.raw}]`;
   const morphology = word.morphology || {};
+  const reflexivePronoun = infinitive.startsWith("sich ") ? germanReflexivePronoun(agreement) : "";
   const deponent = morphology.deponent || morphology.verbClass === "deponent" || morphology.voice === "passive" && morphology.lexicalVoice === "deponent";
   if (morphology.voice === "passive" && !deponent) {
     if (morphology.tense === "future" || morphology.tense === "future-perfect") return `${conjugateGerman("werden", agreement, "present")} ${pastParticiple(infinitive)} werden`;
@@ -961,20 +1164,26 @@ function renderFiniteVerb(context, word, agreement, options = {}) {
   if (morphology.mood === "imperative") return imperativeGerman(infinitive, agreement);
   if (options.counterfactual && morphology.mood === "subjunctive" && morphology.tense === "pluperfect") {
     const auxiliary = movementVerb(infinitive) || infinitive === "sein" ? "sein" : "haben";
-    return `${subjunctiveAuxiliary(auxiliary, agreement)} ${pastParticiple(infinitive)}`;
+    return [subjunctiveAuxiliary(auxiliary, agreement), reflexivePronoun, pastParticiple(infinitive)].filter(Boolean).join(" ");
   }
   if (options.counterfactual && morphology.mood === "subjunctive" && isEsse(word) && morphology.tense === "imperfect") return subjunctiveAuxiliary("sein", agreement, false);
   const tense = germanTense(morphology, options.narrative);
   if (morphology.tense === "perfect" && tense === "perfect") {
     const auxiliary = movementVerb(infinitive) ? "sein" : "haben";
-    return `${conjugateGerman(auxiliary, agreement, "present")} ${pastParticiple(infinitive)}`;
+    return [conjugateGerman(auxiliary, agreement, "present"), reflexivePronoun, pastParticiple(infinitive)].filter(Boolean).join(" ");
   }
   if (morphology.tense === "pluperfect") {
     const auxiliary = movementVerb(infinitive) ? "sein" : "haben";
-    return `${conjugateGerman(auxiliary, agreement, "imperfect")} ${pastParticiple(infinitive)}`;
+    return [conjugateGerman(auxiliary, agreement, "imperfect"), reflexivePronoun, pastParticiple(infinitive)].filter(Boolean).join(" ");
   }
   if (morphology.tense === "future" || morphology.tense === "future-perfect") return `${conjugateGerman("werden", agreement, "present")} ${infinitive}`;
   return conjugateGerman(infinitive, agreement, tense);
+}
+
+function germanReflexivePronoun(agreement = {}) {
+  const person = Math.min(3, Math.max(1, Number(agreement.person) || 3));
+  const plural = agreement.number === "plural";
+  return ({ 1: plural ? "uns" : "mich", 2: plural ? "euch" : "dich", 3: "sich" })[person];
 }
 
 function renderPerfectPassiveVerb(context, participle, auxiliary, agreement) {
@@ -990,19 +1199,25 @@ function renderPerfectPassiveVerb(context, participle, auxiliary, agreement) {
 
 function renderInfinitiveAsFinite(infinitive, agreement, governing, options = {}) {
   const lexical = germanInfinitive(infinitive);
+  let finitePhrase;
   if (infinitive.morphology.voice === "passive") {
-    if (infinitive.morphology.tense === "perfect") return `${pastParticiple(lexical)} worden war`;
-    return `${pastParticiple(lexical)} wird`;
-  }
-  if (infinitive.morphology.tense === "perfect") {
+    if (infinitive.morphology.tense === "perfect") {
+      const tense = ["perfect", "imperfect", "pluperfect"].includes(governing?.morphology?.tense) ? "imperfect" : "present";
+      finitePhrase = `${conjugateGerman("sein", agreement, tense)} ${pastParticiple(lexical)} worden`;
+    } else {
+      finitePhrase = `${conjugateGerman("werden", agreement, "present")} ${pastParticiple(lexical)}`;
+    }
+  } else if (infinitive.morphology.tense === "perfect") {
     const auxiliary = movementVerb(lexical) ? "sein" : "haben";
     const past = ["perfect", "imperfect", "pluperfect"].includes(governing?.morphology?.tense);
-    return `${pastParticiple(lexical)} ${conjugateGerman(auxiliary, agreement, past ? "imperfect" : "present")}`;
+    finitePhrase = `${conjugateGerman(auxiliary, agreement, past ? "imperfect" : "present")} ${pastParticiple(lexical)}`;
+  } else if (infinitive.morphology.tense === "future") {
+    finitePhrase = `${conjugateGerman("werden", agreement, "present")} ${lexical}`;
+  } else {
+    const past = ["perfect", "imperfect", "pluperfect"].includes(governing?.morphology?.tense);
+    finitePhrase = conjugateGerman(lexical, agreement, past ? "imperfect" : "present");
   }
-  if (infinitive.morphology.tense === "future") return `${conjugateGerman("werden", agreement, "present")} ${lexical}`;
-  const past = ["perfect", "imperfect", "pluperfect"].includes(governing?.morphology?.tense);
-  const finite = conjugateGerman(lexical, agreement, past ? "imperfect" : "present");
-  return options.subordinate ? subordinateFinitePhrase(finite) : finite;
+  return options.subordinate ? subordinateFinitePhrase(finitePhrase) : finitePhrase;
 }
 
 function subordinateFinitePhrase(value) {
@@ -1209,17 +1424,18 @@ function firstSense(word) {
 function cleanNounMeaning(value) {
   return String(value || "")
     .split(/\s*;\s*/)[0]
-    .split(/\s*,\s*(?=(?:der|die|das|ein|eine)\s+)/i)[0]
+    .split(/\s*,\s*(?=(?:der|die|das|ein|eine|kein|keine)\s+)/i)[0]
     .trim()
     .replace(/^\([^)]*\)\s*/, "");
 }
 
 function dissectNoun(meaning, word) {
-  const match = meaning.match(/^(der|die|das|ein|eine)\s+(.+)$/i);
+  const match = meaning.match(/^(der|die|das|ein|eine|kein|keine)\s+(.+)$/i);
   const noun = match?.[2] || meaning;
   const known = KNOWN_GERMAN_NOUNS[noun];
   const article = match?.[1]?.toLocaleLowerCase("de") || known?.article || inferArticle(noun, word);
-  const gender = article === "die" || article === "eine" ? "f" : article === "das" ? "n" : "m";
+  const genderArticle = article.startsWith("kein") ? known?.article || inferArticle(noun, word) : article;
+  const gender = genderArticle === "die" || genderArticle === "eine" ? "f" : genderArticle === "das" ? "n" : "m";
   return { article, noun, gender };
 }
 
@@ -1243,14 +1459,24 @@ function germanGender(word) {
 }
 
 function declineArticle(article, grammaticalCase, gender) {
-  const indefinite = /^ein/.test(article);
-  const tables = {
-    nominative: { m: indefinite ? "ein" : "der", f: indefinite ? "eine" : "die", n: indefinite ? "ein" : "das" },
-    accusative: { m: indefinite ? "einen" : "den", f: indefinite ? "eine" : "die", n: indefinite ? "ein" : "das" },
-    dative: { m: indefinite ? "einem" : "dem", f: indefinite ? "einer" : "der", n: indefinite ? "einem" : "dem" },
-    genitive: { m: indefinite ? "eines" : "des", f: indefinite ? "einer" : "der", n: indefinite ? "eines" : "des" }
+  const value = String(article || "").toLocaleLowerCase("de");
+  const negative = value.startsWith("kein");
+  const indefinite = value.startsWith("ein") || negative;
+  const base = negative ? "kein" : "ein";
+  const indefiniteEndings = {
+    nominative: { m: "", f: "e", n: "" },
+    accusative: { m: "en", f: "e", n: "" },
+    dative: { m: "em", f: "er", n: "em" },
+    genitive: { m: "es", f: "er", n: "es" }
   };
-  return tables[grammaticalCase]?.[gender] || article;
+  if (indefinite) return `${base}${indefiniteEndings[grammaticalCase]?.[gender] ?? ""}`;
+  const definite = {
+    nominative: { m: "der", f: "die", n: "das" },
+    accusative: { m: "den", f: "die", n: "das" },
+    dative: { m: "dem", f: "der", n: "dem" },
+    genitive: { m: "des", f: "der", n: "des" }
+  };
+  return definite[grammaticalCase]?.[gender] || article;
 }
 
 function declineNounPhrase(phrase, grammaticalCase, word, options = {}) {
@@ -1273,8 +1499,14 @@ function declineProperEthnonym(name, grammaticalCase) {
 }
 
 function declineGermanNoun(noun, grammaticalCase, gender) {
-  if (grammaticalCase !== "nominative" && KNOWN_GERMAN_NOUNS[noun]?.oblique) return KNOWN_GERMAN_NOUNS[noun].oblique;
-  if (grammaticalCase === "genitive" && ["m", "n"].includes(gender) && !/[sxßz]$/i.test(noun)) return `${noun}s`;
+  const known = KNOWN_GERMAN_NOUNS[noun];
+  if (grammaticalCase === "genitive" && known?.genitive) return known.genitive;
+  if (grammaticalCase !== "nominative" && known?.oblique) return known.oblique;
+  if (grammaticalCase === "genitive" && ["m", "n"].includes(gender)) {
+    if (/(?:chen|lein)$/iu.test(noun)) return `${noun}s`;
+    const syllables = noun.match(/[aeiouyäöü]+/giu)?.length || 1;
+    return `${noun}${/[sßxz]$/iu.test(noun) || syllables === 1 ? "es" : "s"}`;
+  }
   return noun;
 }
 
@@ -1318,15 +1550,35 @@ function inflectPossessive(stem, grammaticalCase, gender, number) {
   return `${stem}${endings[grammaticalCase]?.[gender] || ""}`;
 }
 
-function inflectAdjective(value, grammaticalCase, gender, number, hasArticle) {
+function inflectAdjective(value, grammaticalCase, gender, number, declensionClass = "strong") {
   const stem = adjectiveStem(value);
   if (!stem) return "";
-  if (!hasArticle) {
-    if (number === "plural") return `${stem}e`;
-    return `${stem}${gender === "f" ? "e" : gender === "n" ? "es" : "er"}`;
-  }
-  if (number === "plural" || grammaticalCase === "dative" || grammaticalCase === "genitive" || grammaticalCase === "accusative" && gender === "m") return `${stem}en`;
-  return `${stem}e`;
+  const grammaticalNumber = number === "plural" || gender === "plural" ? "plural" : "singular";
+  const normalizedGender = grammaticalNumber === "plural" ? "plural" : gender || "m";
+  const endings = {
+    strong: {
+      nominative: { m: "er", f: "e", n: "es", plural: "e" },
+      accusative: { m: "en", f: "e", n: "es", plural: "e" },
+      dative: { m: "em", f: "er", n: "em", plural: "en" },
+      genitive: { m: "en", f: "er", n: "en", plural: "er" }
+    },
+    weak: {
+      nominative: { m: "e", f: "e", n: "e", plural: "en" },
+      accusative: { m: "en", f: "e", n: "e", plural: "en" },
+      dative: { m: "en", f: "en", n: "en", plural: "en" },
+      genitive: { m: "en", f: "en", n: "en", plural: "en" }
+    },
+    mixed: {
+      nominative: { m: "er", f: "e", n: "es", plural: "en" },
+      accusative: { m: "en", f: "e", n: "es", plural: "en" },
+      dative: { m: "en", f: "en", n: "en", plural: "en" },
+      genitive: { m: "en", f: "en", n: "en", plural: "en" }
+    }
+  };
+  const ending = endings[declensionClass]?.[grammaticalCase]?.[normalizedGender]
+    || endings.strong[grammaticalCase]?.[normalizedGender]
+    || "e";
+  return `${stem}${ending}`;
 }
 
 function contractPreposition(value) {
@@ -1349,12 +1601,16 @@ function defaultAblativePhrase(word, nominal) {
 function splitGermanVerb(value) {
   const parts = String(value || "").split(/\s+/).filter(Boolean);
   if (parts.length < 2) return { head: parts[0] || "", middle: "", tail: "", separable: false };
+  const particles = new Set(["ab", "an", "auf", "aus", "bei", "ein", "fest", "fort", "her", "hin", "los", "mit", "nach", "nieder", "statt", "teil", "vor", "weg", "weiter", "zurück", "zusammen", "zu"]);
   const reflexiveIndex = parts.findIndex((part, index) => index > 0 && ["mich", "dich", "sich", "uns", "euch"].includes(part));
-  if (reflexiveIndex >= 0) return { head: parts[0], middle: parts[reflexiveIndex], tail: parts.filter((_, index) => index !== 0 && index !== reflexiveIndex).join(" "), separable: false };
+  if (reflexiveIndex >= 0) {
+    const tailParts = parts.filter((_, index) => index !== 0 && index !== reflexiveIndex);
+    return { head: parts[0], middle: parts[reflexiveIndex], tail: tailParts.join(" "), separable: tailParts.length === 1 && particles.has(tailParts[0]) };
+  }
   const auxiliaries = new Set(["bin", "bist", "ist", "sind", "seid", "war", "warst", "waren", "wart", "habe", "hast", "hat", "haben", "habt", "hatte", "hattest", "hatten", "hattet", "werde", "wirst", "wird", "werden", "werdet", "wurde", "wurdest", "wurden", "wurdet"]);
   if (auxiliaries.has(parts[0])) return { head: parts[0], middle: "", tail: parts.slice(1).join(" "), separable: false };
-  const particles = new Set(["ab", "an", "auf", "aus", "bei", "ein", "fest", "fort", "her", "hin", "los", "mit", "nach", "nieder", "statt", "teil", "vor", "weg", "weiter", "zurück", "zusammen", "zu"]);
-  return { head: parts.slice(0, -1).join(" "), middle: "", tail: parts.at(-1), separable: particles.has(parts.at(-1)) };
+  const tail = parts.slice(1).join(" ");
+  return { head: parts[0], middle: "", tail, separable: parts.length === 2 && particles.has(parts[1]) };
 }
 
 function separableVerb(value) {
@@ -1369,13 +1625,21 @@ function movementVerb(value) {
 
 function imperativeGerman(infinitive, agreement) {
   const irregular = {
-    geben: ["gib", "gebt"], haben: ["hab", "habt"], lesen: ["lies", "lest"],
-    nehmen: ["nimm", "nehmt"], sehen: ["sieh", "seht"], sein: ["sei", "seid"], werden: ["werde", "werdet"]
+    essen: ["iss", "esst"], geben: ["gib", "gebt"], haben: ["hab", "habt"], helfen: ["hilf", "helft"],
+    lesen: ["lies", "lest"], nehmen: ["nimm", "nehmt"], sehen: ["sieh", "seht"], sein: ["sei", "seid"],
+    sprechen: ["sprich", "sprecht"], vergessen: ["vergiss", "vergesst"], werfen: ["wirf", "werft"], werden: ["werde", "werdet"]
   };
-  if (irregular[infinitive]) return irregular[infinitive][agreement.number === "plural" ? 1 : 0];
-  const stem = infinitive.replace(/en$/, "").replace(/n$/, "");
-  if (agreement.number === "plural") return `${stem}${/[dt]$/.test(stem) ? "et" : "t"}`;
-  return `${stem}${/[dt]$/.test(stem) ? "e" : ""}`;
+  const reflexive = infinitive.startsWith("sich ");
+  const lexical = reflexive ? infinitive.slice(5) : infinitive;
+  const separable = separableVerb(lexical);
+  const core = separable?.core || lexical;
+  const stem = core.replace(/en$/, "").replace(/n$/, "");
+  const form = irregular[core]
+    ? irregular[core][agreement.number === "plural" ? 1 : 0]
+    : agreement.number === "plural"
+      ? `${stem}${/[dt]$/.test(stem) ? "et" : "t"}`
+      : `${stem}${/[dt]$/.test(stem) ? "e" : ""}`;
+  return [form, reflexive ? germanReflexivePronoun(agreement) : "", separable?.prefix].filter(Boolean).join(" ");
 }
 
 function subjunctiveAuxiliary(auxiliary, agreement, perfect = true) {

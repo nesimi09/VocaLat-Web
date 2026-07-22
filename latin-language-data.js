@@ -303,7 +303,21 @@ export const GERMAN_IRREGULAR_PRESENT = Object.freeze({
   sehen: [["sehe", "siehst", "sieht"], ["sehen", "seht", "sehen"]],
   sprechen: [["spreche", "sprichst", "spricht"], ["sprechen", "sprecht", "sprechen"]],
   lesen: [["lese", "liest", "liest"], ["lesen", "lest", "lesen"]],
-  laufen: [["laufe", "läufst", "läuft"], ["laufen", "lauft", "laufen"]]
+  laufen: [["laufe", "läufst", "läuft"], ["laufen", "lauft", "laufen"]],
+  fahren: [["fahre", "fährst", "fährt"], ["fahren", "fahrt", "fahren"]],
+  fallen: [["falle", "fällst", "fällt"], ["fallen", "fallt", "fallen"]],
+  fangen: [["fange", "fängst", "fängt"], ["fangen", "fangt", "fangen"]],
+  halten: [["halte", "hältst", "hält"], ["halten", "haltet", "halten"]],
+  lassen: [["lasse", "lässt", "lässt"], ["lassen", "lasst", "lassen"]],
+  schlafen: [["schlafe", "schläfst", "schläft"], ["schlafen", "schlaft", "schlafen"]],
+  tragen: [["trage", "trägst", "trägt"], ["tragen", "tragt", "tragen"]],
+  helfen: [["helfe", "hilfst", "hilft"], ["helfen", "helft", "helfen"]],
+  treffen: [["treffe", "triffst", "trifft"], ["treffen", "trefft", "treffen"]],
+  werfen: [["werfe", "wirfst", "wirft"], ["werfen", "werft", "werfen"]],
+  essen: [["esse", "isst", "isst"], ["essen", "esst", "essen"]],
+  vergessen: [["vergesse", "vergisst", "vergisst"], ["vergessen", "vergesst", "vergessen"]],
+  wachsen: [["wachse", "wächst", "wächst"], ["wachsen", "wachst", "wachsen"]],
+  stoßen: [["stoße", "stößt", "stößt"], ["stoßen", "stoßt", "stoßen"]]
 });
 
 export const GERMAN_IRREGULAR_PAST = Object.freeze({
@@ -332,7 +346,30 @@ export const GERMAN_IRREGULAR_PAST = Object.freeze({
   finden: [["fand", "fandest", "fand"], ["fanden", "fandet", "fanden"]],
   halten: [["hielt", "hieltest", "hielt"], ["hielten", "hieltet", "hielten"]],
   lassen: [["ließ", "ließest", "ließ"], ["ließen", "ließt", "ließen"]],
-  siegen: [["siegte", "siegtest", "siegte"], ["siegten", "siegtet", "siegten"]]
+  siegen: [["siegte", "siegtest", "siegte"], ["siegten", "siegtet", "siegten"]],
+  fahren: [["fuhr", "fuhrst", "fuhr"], ["fuhren", "fuhrt", "fuhren"]],
+  schlafen: [["schlief", "schliefst", "schlief"], ["schliefen", "schlieft", "schliefen"]],
+  tragen: [["trug", "trugst", "trug"], ["trugen", "trugt", "trugen"]],
+  bitten: [["bat", "batst", "bat"], ["baten", "batet", "baten"]],
+  helfen: [["half", "halfst", "half"], ["halfen", "halft", "halfen"]],
+  treffen: [["traf", "trafst", "traf"], ["trafen", "traft", "trafen"]],
+  stehen: [["stand", "standst", "stand"], ["standen", "standet", "standen"]],
+  sitzen: [["saß", "saßest", "saß"], ["saßen", "saßt", "saßen"]],
+  liegen: [["lag", "lagst", "lag"], ["lagen", "lagt", "lagen"]],
+  ziehen: [["zog", "zogst", "zog"], ["zogen", "zogt", "zogen"]],
+  trinken: [["trank", "trankst", "trank"], ["tranken", "trankt", "tranken"]],
+  werfen: [["warf", "warfst", "warf"], ["warfen", "warft", "warfen"]],
+  essen: [["aß", "aßest", "aß"], ["aßen", "aßt", "aßen"]],
+  vergessen: [["vergaß", "vergaßest", "vergaß"], ["vergaßen", "vergaßt", "vergaßen"]],
+  wachsen: [["wuchs", "wuchsest", "wuchs"], ["wuchsen", "wuchst", "wuchsen"]],
+  stoßen: [["stieß", "stießest", "stieß"], ["stießen", "stießt", "stießen"]],
+  fangen: [["fing", "fingst", "fing"], ["fingen", "fingt", "fingen"]],
+  können: [["konnte", "konntest", "konnte"], ["konnten", "konntet", "konnten"]],
+  müssen: [["musste", "musstest", "musste"], ["mussten", "musstet", "mussten"]],
+  dürfen: [["durfte", "durftest", "durfte"], ["durften", "durftet", "durften"]],
+  mögen: [["mochte", "mochtest", "mochte"], ["mochten", "mochtet", "mochten"]],
+  sollen: [["sollte", "solltest", "sollte"], ["sollten", "solltet", "sollten"]],
+  wollen: [["wollte", "wolltest", "wollte"], ["wollten", "wolltet", "wollten"]]
 });
 
 export const GERMAN_PARTICIPLES = Object.freeze({
@@ -342,7 +379,9 @@ export const GERMAN_PARTICIPLES = Object.freeze({
   bringen: "gebracht", wissen: "gewusst", bitten: "gebeten", helfen: "geholfen", treffen: "getroffen", nennen: "genannt", verwunden: "verwundet",
   tragen: "getragen", halten: "gehalten", lassen: "gelassen", schließen: "geschlossen", tun: "getan", stehen: "gestanden", weichen: "gewichen",
   überschreiten: "überschritten", führen: "geführt", bleiben: "geblieben", fallen: "gefallen", aufbrechen: "aufgebrochen", vergehen: "vergangen",
-  sitzen: "gesessen", liegen: "gelegen", ziehen: "gezogen", siegen: "gesiegt", trinken: "getrunken", werfen: "geworfen"
+  sitzen: "gesessen", liegen: "gelegen", ziehen: "gezogen", siegen: "gesiegt", trinken: "getrunken", werfen: "geworfen",
+  fahren: "gefahren", schlafen: "geschlafen", essen: "gegessen", vergessen: "vergessen", wachsen: "gewachsen", stoßen: "gestoßen", fangen: "gefangen",
+  können: "gekonnt", müssen: "gemusst", dürfen: "gedurft", mögen: "gemocht", sollen: "gesollt", wollen: "gewollt"
 });
 
 export const KNOWN_GERMAN_NOUNS = Object.freeze({

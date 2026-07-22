@@ -89,7 +89,7 @@ test("public results do not expose a sentence-memory shortcut", () => {
 
 test("classical prose combines expressions, ethnonyms, agreement and AcI without sentence shortcuts", () => {
   const cause = translate("Qua de causa Helvetii quoque reliquos Gallos virtute praecedunt.").result.translation;
-  assert.match(cause, /^Die Helvetier.+aus diesem Grund.+die Gallier.+an der (?:Tüchtigkeit|Tapferkeit)/iu);
+  assert.match(cause, /^Die Helvetier.+aus diesem Grund.+die (?:übrigen )?Gallier.+an der (?:Tüchtigkeit|Tapferkeit)/iu);
 
   const passive = translate("Nam omnis civitas Helvetia in quattuor pagos divisa est.").result.translation;
   assert.match(passive, /^Denn die ganze helvetische Bürgerschaft wurde in vier Bezirke geteilt\.$/u);
