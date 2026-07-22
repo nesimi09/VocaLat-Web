@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { readFileSync, statSync } from "node:fs";
+import { existsSync, readFileSync, statSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, resolve } from "node:path";
 
@@ -23,8 +23,17 @@ const largeRuntimeAssets = [
 test("every service-worker shell asset exists", () => {
   assert.ok(shellAssets.length >= 10);
   for (const asset of shellAssets) assert.ok(statSync(resolve(root, asset)).isFile(), `${asset} fehlt`);
-  for (const courseAsset of ["course-engine.js", "course-access.js", "grammar-order.js", "grammar-practice.js", "latin-syntax-translator.js", "payment.js", "data/course.json"]) {
+  for (const courseAsset of ["course-engine.js", "course-access.js", "grammar-order.js", "grammar-practice.js", "latin-syntax-translator.js", "latin-analysis.js", "latin-language-data.js", "german-generator.js", "payment.js", "data/course.json"]) {
     assert.equal(shellAssets.includes(courseAsset), true, `${courseAsset} muss zum Offline-App-Rahmen gehören`);
+  }
+  assert.equal(shellAssets.includes("data/translation-memory.json"), false, "fertige Satzübersetzungen dürfen nicht im Laufzeit-Cache liegen");
+});
+
+test("the browser runtime contains no sentence translation memory", () => {
+  assert.equal(existsSync(resolve(root, "data/translation-memory.json")), false);
+  for (const file of ["app.js", "learning-engine.js", "latin-syntax-translator.js", "latin-analysis.js", "german-generator.js", "service-worker.js"]) {
+    const source = readFileSync(resolve(root, file), "utf8");
+    assert.doesNotMatch(source, /translationMemory|translation-memory/iu, file);
   }
 });
 

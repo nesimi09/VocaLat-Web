@@ -1,5 +1,5 @@
-const CACHE = "vocalat-web-shell-v24";
-const RUNTIME_CACHE = "vocalat-web-runtime-v24";
+const CACHE = "vocalat-web-shell-v26";
+const RUNTIME_CACHE = "vocalat-web-runtime-v26";
 const ASSETS = [
   "./",
   "./index.html",
@@ -12,7 +12,9 @@ const ASSETS = [
   "./payment.js",
   "./learning-engine.js",
   "./latin-syntax-translator.js",
-  "./local-model-client.js",
+  "./latin-analysis.js",
+  "./latin-language-data.js",
+  "./german-generator.js",
   "./document-analysis.js",
   "./morphology.js",
   "./ocr.js",
@@ -23,7 +25,6 @@ const ASSETS = [
   "./data/grammar.json",
   "./data/course.json",
   "./data/fallback-lexicon.json",
-  "./data/translation-memory.json",
   "./vendor/tesseract/tesseract.min.js",
   "./vendor/whitakers/whitakers-words.js"
 ];

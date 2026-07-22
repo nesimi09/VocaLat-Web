@@ -1,6 +1,5 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
 import { analyzeBookText, answerMatches, answerOptionState, selectPracticeVocabulary, shuffledUniqueMeanings } from "../learning-engine.js";
 import { cleanOcrText } from "../ocr.js";
 
@@ -45,11 +44,12 @@ test("practice vocabulary combines exactly the selected lessons", () => {
   assert.deepEqual(selectPracticeVocabulary(null, "all"), []);
 });
 
-test("book analysis resolves phrases and fails closed for unknown words", () => {
+test("book analysis keeps tokens independent and fails closed for unknown words", () => {
   const result = analyzeBookText("familia non debere ignotus", vocabulary, [], 2);
   assert.equal(result.tokenCount, 4);
-  assert.equal(result.coveredWords, 3);
-  assert.equal(result.draft, "die Hausgemeinschaft · nicht dürfen · [ignotus]");
+  assert.equal(result.coveredWords, 1);
+  assert.equal(result.draft, "die Hausgemeinschaft · [non] · [debere] · [ignotus]");
+  assert.deepEqual(result.matches.map(match => match.length), [1, 1, 1, 1]);
   assert.equal(result.matches.at(-1).status, "unknown");
 });
 
@@ -87,7 +87,12 @@ test("the reported OCR example is normalized, parsed and translated", () => {
   const result = analyzeBookText("1. Sirénibus pulchre cantantibus\n2. Comitibus iter pergere cupientibus\n3. Periculis iterum iterumque instantibus", book, grammar, null, fallback);
   assert.equal(result.coverage, 100);
   assert.equal(result.correctedText.split("\n")[0], "Sirenibus pulchre cantantibus");
-  assert.equal(result.translation, "Während die Sirenen schön singen.\nWährend die Begleiter den Weg fortsetzen wollen.\nWährend die Gefahren immer wieder drohen.");
+  const translated = result.translation.split("\n");
+  assert.equal(translated.length, 3);
+  assert.match(translated[0], /Sirenen.+schön.+singen/iu);
+  assert.match(translated[1], /Begleiter.+Weg.+(?:wollen|wünschen)/iu);
+  assert.match(translated[2], /Gefahr.+immer wieder.+(?:drohen|bevorstehen)/iu);
+  assert.doesNotMatch(result.translation, /\s·\s|\[[^\]]+\]/u);
 });
 
 test("one omitted OCR letter is repaired from known Latin forms", () => {
@@ -200,12 +205,13 @@ test("sentence case and dictionary proper-name context disambiguate avum, Aulum 
     ]]
   ]);
   const result = analyzeBookText("Familia avum exspectat. Cornelia Aulum quaerit. Domina servos vocat. Salve, ave.", book, [], null, fallback, morphology);
-  assert.equal(result.matches.find(match => match.normalized === "avum").entries[0].lemma, "avus");
-  assert.equal(result.matches.find(match => match.normalized === "aulum").entries[0].lemma, "Aulus");
+  assert.deepEqual(new Set(result.matches.find(match => match.normalized === "avum").entries.map(entry => entry.lemma)), new Set(["avis", "avus"]));
+  assert.equal(result.matches.find(match => match.normalized === "avum").morphology.some(item => item.case === "accusative"), true);
+  assert.equal(result.matches.find(match => match.normalized === "aulum").entries.some(entry => entry.lemma === "Aulus"), true);
   assert.equal(result.matches.find(match => match.normalized === "aulum").status, "proper");
-  assert.equal(result.matches.find(match => match.normalized === "aulum").morphology.some(item => item.case === "genitive"), false);
-  assert.equal(result.matches.find(match => match.normalized === "servos").entries[0].deutsch, "Sklave");
-  assert.equal(result.matches.find(match => match.normalized === "ave").entries[0].lemma, "avus");
+  assert.equal(result.matches.find(match => match.normalized === "aulum").morphology.some(item => item.case === "genitive"), true);
+  assert.equal(result.matches.find(match => match.normalized === "servos").entries.some(entry => entry.deutsch === "Sklave"), true);
+  assert.deepEqual(new Set(result.matches.find(match => match.normalized === "ave").entries.map(entry => entry.lemma)), new Set(["avis", "avus", "ave"]));
 });
 
 test("page glossary and proper names resolve before generic fallbacks", () => {
@@ -215,22 +221,33 @@ test("page glossary and proper names resolve before generic fallbacks", () => {
   ];
   const result = analyzeBookText("Nessus philtrum Deianirae Nessum", [], [], null, fallback);
   assert.equal(result.matches[0].status, "proper");
-  assert.equal(result.matches[1].status, "contextual");
+  assert.equal(result.matches[1].status, "ambiguous");
   assert.equal(result.matches[1].entries[0].deutsch, "Liebestrank");
+  assert.equal(result.matches[1].entries[0].source, "glossary");
   assert.equal(result.matches[2].entries[0].lemma, "Deianira");
   assert.equal(result.matches[3].entries[0].lemma, "Nessus");
 });
 
-test("verified complex passages replace word salad and tolerate a small OCR error", () => {
-  const memory = JSON.parse(readFileSync(new URL("../data/translation-memory.json", import.meta.url), "utf8")).entries;
-  const text = "Nessus centaurus rogats est ab Deianira, ut se flumen Euhenum transferret: quam sublatam in flumine ipso violare voluit. Hoc Hercules cum intervenisset et Deianira cum fidem eius imploravisset, Nessum sagittis confixit. Ille moriens, cum sciret sagittas hydrae veneno tinctas quantam vim veneni habere, sanguinem suum exceptum Deianirae dedit et id philtrum esse dixit; si vellet, ne se coniunx sperneret, eo iuberet se vestem eius attrahere. Id Deianira credens conditum diligenter servavit.";
-  const result = analyzeBookText(text, [], [], null, [], new Map(), memory);
-  assert.equal(result.translationVerified, true);
-  assert.equal(result.verifiedLines, 5);
-  assert.match(result.translation, /^Der Zentaur Nessus wurde von Deianira gebeten/);
-  assert.match(result.translation, /durchbohrte er Nessus mit Pfeilen/);
-  assert.match(result.translation, /Deianira glaubte dies und bewahrte es, nachdem sie es versteckt hatte, sorgfältig auf\.$/);
-  assert.doesNotMatch(result.translation, /\[[^\]]+\]|Frage es gibt|die Sitte/);
+test("translation is derived from the supplied lexical evidence at runtime", () => {
+  const morphology = new Map([
+    ["nauta", [{ forms: ["nauta"], morphology: { part: "n", case: "nominative", number: "singular", gender: "m" } }]],
+    ["puellam", [{ forms: ["puella"], morphology: { part: "n", case: "accusative", number: "singular", gender: "f" } }]],
+    ["vocat", [{ forms: ["voco"], morphology: { part: "v", mood: "indicative", tense: "present", voice: "active", person: 3, number: "singular" } }]]
+  ]);
+  const base = [
+    { lemma: "nauta", forms: ["nauta", "nautae"], pos: "n", meanings: ["Seemann"] },
+    { lemma: "puella", forms: ["puella", "puellae"], pos: "n", meanings: ["Mädchen"] },
+    { lemma: "voco", forms: ["voco", "vocare"], pos: "v", meanings: ["rufen"] }
+  ];
+  const changed = base.map(entry => entry.lemma === "nauta" ? { ...entry, meanings: ["Matrose"] } : entry);
+  const first = analyzeBookText("Nauta puellam vocat.", [], [], null, base, morphology);
+  const second = analyzeBookText("Nauta puellam vocat.", [], [], null, changed, morphology);
+
+  assert.match(first.translation, /Seemann/);
+  assert.match(second.translation, /Matrose/);
+  assert.notEqual(first.translation, second.translation);
+  assert.equal(Object.hasOwn(first, "translationVerified"), false);
+  assert.equal(Object.hasOwn(first, "verifiedLines"), false);
 });
 
 test("resolved complex prose is rendered as a sentence without needing translation memory", () => {
@@ -249,7 +266,7 @@ test("resolved complex prose is rendered as a sentence without needing translati
   assert.equal(result.translationReliable, true);
   assert.match(result.translation, /^Als .*kommt,/);
   assert.doesNotMatch(result.translation, / · |\[[^\]]+\]/);
-  assert.equal(result.translationVerified, false);
+  assert.equal(Object.hasOwn(result, "translationVerified"), false);
 });
 
 test("OCR cleanup joins line-break hyphenation without changing paragraphs", () => {

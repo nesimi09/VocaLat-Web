@@ -7,7 +7,6 @@ import { buildGrammarPractice } from "./grammar-practice.js";
 import { extractLatinDocument } from "./document-analysis.js";
 import { analyzeLatinMorphology, prepareMorphology } from "./morphology.js";
 import { recognizeLatinText, validateOcrImage } from "./ocr.js";
-import { requestLocalModelTranslation } from "./local-model-client.js";
 
 const NAV = [
   { id: "kurs", label: "Kurs", icon: "course" },
@@ -46,13 +45,13 @@ const state = {
   revealed: false, selectedChoice: null, feedback: null, answerRecorded: false, typedAnswer: "",
   grammarPracticeCategory: null, grammarPracticeLessons: [], grammarPracticePickerOpen: false, grammarPracticeRound: [], grammarPracticeIndex: 0,
   grammarPracticeSelected: null, grammarPracticeRecorded: false, grammarPracticeCorrect: 0, grammarPracticeComplete: false,
-  translationText: "", translationRawText: "", translationImage: null, translationImageUrl: null, translationUsesImage: false,
+  translationText: "", translationRawText: "", translationImage: null, translationImageUrl: null,
   translationBusy: false, translationProgress: 0, translationStatus: "", translationError: "",
   translationConfidence: null, translationAnalysis: null,
   translationMorphology: new Map(),
   translationGlossary: [], translationDocument: null,
   translationJob: 0,
-  fallbackVocabulary: [], translationMemory: [],
+  fallbackVocabulary: [],
   progress: loadProgress()
 };
 
@@ -759,15 +758,13 @@ function renderTranslationResults() {
       : `<article class="grammar-suggestion generated"><strong>${escapeHtml(rule.title)}</strong><small>${escapeHtml(rule.reason)}</small><span>Automatisch ergänzt</span></article>`).join("")}</div>`
     : `<p class="meta">Keine zusätzliche Grammatikregel nötig.</p>`;
   const translationLines = analysis.translation.split("\n").filter(Boolean).map(line => `<p>${escapeHtml(line)}</p>`).join("");
-  const translationBadge = analysis.translationVerified
-    ? "Lokal geprüft"
-    : analysis.translationReliable ? "Lokal übersetzt" : "Bitte prüfen";
+  const translationBadge = analysis.translationReliable ? "Lokal übersetzt" : "Bitte prüfen";
 
   return `<section class="translation-results" aria-live="polite">
     <section class="card final-translation">
-      <div class="card-top"><h2>Übersetzung</h2><span class="coverage-badge${analysis.translationReliable || analysis.translationVerified ? "" : " needs-review"}">${translationBadge}</span></div>
+      <div class="card-top"><h2>Übersetzung</h2><span class="coverage-badge${analysis.translationReliable ? "" : " needs-review"}">${translationBadge}</span></div>
       <div class="translated-lines">${translationLines || `<p>Keine Übersetzung möglich.</p>`}</div>
-      ${analysis.unresolvedWords && !analysis.modelAssisted ? `<small>${analysis.unresolvedWords} ${analysis.unresolvedWords === 1 ? "Stelle konnte" : "Stellen konnten"} nicht sicher aufgelöst werden.</small>` : ""}
+      ${analysis.unresolvedWords ? `<small>${analysis.unresolvedWords} ${analysis.unresolvedWords === 1 ? "Stelle konnte" : "Stellen konnten"} nicht sicher aufgelöst werden.</small>` : ""}
     </section>
     <details class="card analysis-details">
       <summary>Text und Formen prüfen</summary>
@@ -781,7 +778,7 @@ function renderTranslationResults() {
         <h3>Grammatik</h3>
         ${grammar}
         ${state.translationRawText && state.translationRawText.trim() !== state.translationText.trim() ? `<details class="raw-ocr"><summary>Vollständigen OCR-Text anzeigen</summary><pre>${escapeHtml(state.translationRawText)}</pre></details>` : ""}
-        <p class="source-note">Vokabeln aus Bildfußnoten und dem Schulbuch haben Vorrang. Fehlende Bedeutungen stammen aus dem mitgelieferten FreeDict-Wörterbuch (GPL-3.0-or-later).${analysis.modelAssisted ? ` Die deutsche Satzfassung wurde vom lokalen Übersetzungsmodell erstellt.` : ""}</p>
+        <p class="source-note">Vokabeln aus Bildfußnoten und dem Schulbuch haben Vorrang. Fehlende Bedeutungen stammen aus dem mitgelieferten FreeDict-Wörterbuch (GPL-3.0-or-later).</p>
       </div>
     </details>
   </section>`;
@@ -826,15 +823,7 @@ async function runOcr() {
       result = { text: "", confidence: null };
     }
     if (job !== state.translationJob || file !== state.translationImage) return;
-    if (!result.text.trim()) {
-      state.translationStatus = "Bildtext wird lokal gelesen …";
-      updateOcrProgress({ status: "translating locally", progress: .985 });
-      const local = await requestLocalModelTranslation({ latinText: "", imageFile: file, analysis: { matches: [] } });
-      if (job !== state.translationJob) return;
-      if (!local?.normalizedLatin) throw browserOcrError || new Error("Auf dem Bild wurde kein lateinischer Text erkannt.");
-      await applyDirectImageTranslation(local, job);
-      return;
-    }
+    if (!result.text.trim()) throw browserOcrError || new Error("Auf dem Bild wurde kein lateinischer Text erkannt.");
     state.translationRawText = result.text;
     state.translationConfidence = result.confidence;
     state.translationStatus = "Formen und OCR-Fehler werden geprüft …";
@@ -856,22 +845,6 @@ async function runOcr() {
     state.translationStatus = "";
     if (state.route === "uebersetzen") renderTranslate();
   }
-}
-
-async function applyDirectImageTranslation(local, job) {
-  state.translationRawText = local.normalizedLatin;
-  state.translationText = local.normalizedLatin;
-  state.translationMorphology = await analyzeLatinMorphology(local.normalizedLatin).catch(() => new Map());
-  if (job !== state.translationJob) return;
-  state.translationDocument = extractLatinDocument(local.normalizedLatin, state.translationMorphology);
-  state.translationText = state.translationDocument.latinText || local.normalizedLatin;
-  state.translationGlossary = [];
-  const analysis = analyzeBookText(state.translationText, state.vocabulary, state.grammar, null, state.fallbackVocabulary, state.translationMorphology, state.translationMemory);
-  // The server translated exactly normalizedLatin. Keep that same source text
-  // visible instead of applying another client-only OCR rewrite afterwards.
-  analysis.correctedText = local.normalizedLatin;
-  state.translationAnalysis = analysis;
-  attachModelTranslation(analysis, local);
 }
 
 function updateOcrProgress(message) {
@@ -935,51 +908,9 @@ async function runBookAnalysis() {
 }
 
 async function applyBookAnalysis(job = state.translationJob) {
-  let analysis = analyzeBookText(state.translationText, state.vocabulary, state.grammar, null, [...state.translationGlossary, ...state.fallbackVocabulary], state.translationMorphology, state.translationMemory);
+  const analysis = analyzeBookText(state.translationText, state.vocabulary, state.grammar, null, [...state.translationGlossary, ...state.fallbackVocabulary], state.translationMorphology);
   state.translationAnalysis = analysis;
   if (analysis.correctedText) state.translationText = analysis.correctedText;
-  state.translationStatus = "Deutsche Übersetzung wird formuliert …";
-  updateOcrProgress({ status: "translating locally", progress: .985 });
-  const local = await requestLocalModelTranslation({
-    latinText: state.translationText,
-    rawOcrText: state.translationRawText,
-    imageFile: state.translationUsesImage ? state.translationImage : null,
-    analysis
-  });
-  if (job !== state.translationJob || !local) return;
-  if (isUsefulModelLatin(local.normalizedLatin)) {
-    state.translationText = local.normalizedLatin;
-    state.translationMorphology = await analyzeLatinMorphology(local.normalizedLatin).catch(() => new Map());
-    if (job !== state.translationJob) return;
-    state.translationDocument = {
-      ...(state.translationDocument || {}),
-      latinText: local.normalizedLatin,
-      rawText: state.translationRawText || local.normalizedLatin
-    };
-    analysis = analyzeBookText(local.normalizedLatin, state.vocabulary, state.grammar, null, [...state.translationGlossary, ...state.fallbackVocabulary], state.translationMorphology, state.translationMemory);
-    // Do not let a second browser-side OCR heuristic change the source after
-    // the model has translated it. This keeps displayed Latin and German in sync.
-    analysis.correctedText = local.normalizedLatin;
-    state.translationAnalysis = analysis;
-  }
-  attachModelTranslation(analysis, local);
-}
-
-function attachModelTranslation(analysis, local) {
-  analysis.ruleTranslation = analysis.translation;
-  analysis.translation = local.translation;
-  analysis.translationReliable = local.confidence >= .72;
-  analysis.translationVerified = false;
-  analysis.modelAssisted = true;
-  analysis.modelName = local.model;
-  analysis.modelConfidence = local.confidence;
-  analysis.modelWarnings = local.warnings;
-}
-
-function isUsefulModelLatin(value) {
-  const text = String(value || "").trim();
-  const words = text.match(/[A-Za-zÀ-ž]+/g) || [];
-  return text.length <= 24_000 && words.length >= 2;
 }
 
 function selectTranslationImage(file) {
@@ -989,7 +920,6 @@ function selectTranslationImage(file) {
     if (state.translationImageUrl) URL.revokeObjectURL(state.translationImageUrl);
     state.translationImage = file;
     state.translationImageUrl = URL.createObjectURL(file);
-    state.translationUsesImage = true;
     state.translationText = "";
     state.translationRawText = "";
     state.translationError = "";
@@ -1010,7 +940,6 @@ function removeTranslationImage() {
   if (state.translationImageUrl) URL.revokeObjectURL(state.translationImageUrl);
   state.translationImage = null;
   state.translationImageUrl = null;
-  state.translationUsesImage = false;
   state.translationConfidence = null;
   state.translationError = "";
   renderTranslate();
@@ -1366,7 +1295,6 @@ document.addEventListener("input", event => {
   if (event.target.id === "course-typed-answer") state.courseTypedAnswer = event.target.value;
   if (event.target.id === "latin-text") {
     state.translationText = event.target.value;
-    state.translationUsesImage = false;
     state.translationRawText = "";
     state.translationAnalysis = null;
     state.translationMorphology = new Map();
@@ -1464,11 +1392,10 @@ document.addEventListener("submit", event => {
 
 async function init() {
   try {
-    const [vocabularyResponse, grammarResponse, fallbackResponse, memoryResponse, courseResponse, accessResponse, paymentResponse] = await Promise.all([
+    const [vocabularyResponse, grammarResponse, fallbackResponse, courseResponse, accessResponse, paymentResponse] = await Promise.all([
       fetch("data/vocabulary.json"),
       fetch("data/grammar.json"),
       fetch("data/fallback-lexicon.json"),
-      fetch("data/translation-memory.json"),
       fetch("data/course.json"),
       fetch("data/course-access.json", { cache: "no-store" }).catch(() => null),
       fetch("data/payment.json", { cache: "no-store" }).catch(() => null)
@@ -1477,7 +1404,6 @@ async function init() {
     state.vocabulary = (await vocabularyResponse.json()).filter(v => v.latein?.trim() && v.deutsch?.trim() && !v.grammatik?.toLocaleLowerCase("de").includes("unsicher"));
     state.grammar = orderGrammarSections((await grammarResponse.json()).abschnitte || []);
     state.fallbackVocabulary = fallbackResponse.ok ? (await fallbackResponse.json()).entries || [] : [];
-    state.translationMemory = memoryResponse.ok ? (await memoryResponse.json()).entries || [] : [];
     state.course = await courseResponse.json();
     state.courseAccessManifest = accessResponse?.ok ? await accessResponse.json() : null;
     state.paymentConfig = paymentResponse?.ok ? await paymentResponse.json() : null;

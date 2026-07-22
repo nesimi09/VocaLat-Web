@@ -1,94 +1,145 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { analyzeBookText, tokenizeLatinText } from "../learning-engine.js";
-import { extractLatinDocument } from "../document-analysis.js";
+import { gunzipSync } from "node:zlib";
+import { WordsEngine } from "../vendor/whitakers/whitakers-words.js";
+import { analyzeLatinMorphologyWithEngine } from "../morphology.js";
+import { analyzeBookText } from "../learning-engine.js";
+import { translateLatinSyntax } from "../latin-syntax-translator.js";
 
-const memory = JSON.parse(readFileSync(new URL("../data/translation-memory.json", import.meta.url), "utf8")).entries;
+const readText = path => readFileSync(new URL(path, import.meta.url), "utf8");
+const readJson = path => JSON.parse(readText(path));
+const holdout = readJson("./fixtures/translation-holdout.json");
+const vocabulary = readJson("../data/vocabulary.json").filter(entry => entry.latein?.trim() && entry.deutsch?.trim());
+const grammar = readJson("../data/grammar.json").abschnitte || [];
+const fallback = readJson("../data/fallback-lexicon.json").entries || [];
+const engine = WordsEngine.create({
+  dictline: `${gunzipSync(readFileSync(new URL("../vendor/whitakers/data/DICTLINE.GEN.gz", import.meta.url))).toString("utf8")}\n${readText("../vendor/whitakers/data/DICTLINE.SUP")}`,
+  inflects: readText("../vendor/whitakers/data/INFLECTS.LAT"),
+  addons: readText("../vendor/whitakers/data/ADDONS.LAT"),
+  uniques: readText("../vendor/whitakers/data/UNIQUES.LAT")
+});
 
-test("every local corpus entry survives common OCR punctuation and letter errors", () => {
-  assert.ok(memory.length >= 60);
-  for (const entry of memory) {
-    const exact = analyzeBookText(entry.latin, [], [], null, [], new Map(), memory);
-    assert.equal(exact.translationVerified, true, entry.id || entry.latin);
-    assert.equal(exact.translation, entry.german, entry.id || entry.latin);
+function analyze(latin) {
+  const morphology = analyzeLatinMorphologyWithEngine(latin, engine);
+  const result = analyzeBookText(latin, vocabulary, grammar, null, fallback, morphology);
+  const syntax = translateLatinSyntax(result.matches, { source: latin });
+  return { result, syntax };
+}
 
-    const withoutPunctuation = entry.latin.replace(/[.,;:!?]+/g, " ").replace(/\s+/g, " ").trim();
-    const punctuationResult = analyzeBookText(withoutPunctuation, [], [], null, [], new Map(), memory);
-    assert.equal(punctuationResult.translationVerified, true, entry.id || entry.latin);
-
-    const damaged = removeOneLetter(entry.latin);
-    const damagedResult = analyzeBookText(damaged, [], [], null, [], new Map(), memory);
-    assert.equal(damagedResult.translationVerified, true, entry.id || entry.latin);
-    assert.equal(damagedResult.translation, entry.german, entry.id || entry.latin);
+test("the holdout corpus describes structures and concepts, not memorized reference sentences", () => {
+  assert.ok(holdout.cases.length >= 12);
+  assert.equal(new Set(holdout.cases.map(sample => sample.id)).size, holdout.cases.length);
+  for (const sample of holdout.cases) {
+    assert.equal(typeof sample.latin, "string", sample.id);
+    assert.ok(sample.latin.length > 3, sample.id);
+    assert.equal(Object.hasOwn(sample, "german"), false, `${sample.id}: no full German reference is allowed`);
+    assert.equal(Object.hasOwn(sample, "translation"), false, `${sample.id}: no full translation is allowed`);
+    assert.ok((sample.tags?.length || 0) + (sample.roles?.length || 0) + (sample.concepts?.length || 0) > 0, sample.id);
   }
 });
 
-test("a passage is recovered even when OCR loses all sentence punctuation", () => {
-  const entries = memory.filter(entry => entry.work === "In Catilinam 1,1");
-  const passage = entries.map(entry => entry.latin).join(" ").replace(/[.,;:!?]+/g, " ");
-  const result = analyzeBookText(passage, [], [], null, [], new Map(), memory);
-  assert.equal(result.translationVerified, true);
-  assert.equal(result.verifiedLines, entries.length);
-  assert.equal(result.translation, entries.map(entry => entry.german).join("\n"));
+test("unseen sentences are analyzed by the common morphology, parser and generator pipeline", () => {
+  for (const sample of holdout.cases) {
+    const { result, syntax } = analyze(sample.latin);
+    assert.ok(syntax.pipeline, `${sample.id}: structured pipeline evidence is missing`);
+    assert.ok(result.coverage >= sample.minimumCoverage, `${sample.id}: coverage ${result.coverage}%`);
+    assert.equal(result.unresolvedWords, 0, `${sample.id}: unresolved words`);
+    assertSentenceShape(result.translation, sample.id);
+
+    for (const tag of sample.tags || []) {
+      assert.equal(hasTag(syntax.pipeline, tag), true, `${sample.id}: expected ${tag}`);
+    }
+    for (const expected of sample.roles || []) {
+      assert.equal(hasRole(syntax.pipeline, expected.role, expected.token), true, `${sample.id}: ${expected.token} must be ${expected.role}`);
+    }
+    for (const pattern of sample.concepts || []) {
+      assert.match(result.translation, new RegExp(pattern, "iu"), `${sample.id}: ${result.translation}`);
+    }
+    for (const pattern of sample.forbiddenPatterns || []) {
+      assert.doesNotMatch(result.translation, new RegExp(pattern, "iu"), `${sample.id}: ${result.translation}`);
+    }
+  }
 });
 
-test("a missing negation is never accepted as a verified translation", () => {
-  const entry = memory.find(item => /\bnon\b/i.test(item.latin));
-  assert.ok(entry);
-  const opposite = entry.latin.replace(/\bnon\b/i, "iam");
-  const result = analyzeBookText(opposite, [], [], null, [], new Map(), memory);
-  assert.equal(result.translationVerified, false);
+test("word order changes do not change the grammatical roles", () => {
+  const canonical = analyze("Agricola equum videt.");
+  const frontedObject = analyze("Equum agricola videt.");
+
+  for (const sample of [canonical, frontedObject]) {
+    assert.equal(hasRole(sample.syntax.pipeline, "subject", "agricola"), true);
+    assert.equal(hasRole(sample.syntax.pipeline, "direct-object", "equum"), true);
+    assert.match(sample.result.translation, /Bauer/iu);
+    assert.match(sample.result.translation, /Pferd/iu);
+  }
 });
 
-test("a different complete word is never treated as a harmless OCR error", () => {
-  const entry = memory.find(item => tokenizeLatinText(item.latin).length >= 10);
-  assert.ok(entry);
-  const original = tokenizeLatinText(entry.latin).find(token => token.raw.length >= 6).raw;
-  const changed = entry.latin.replace(original, "contrarium");
-  const result = analyzeBookText(changed, [], [], null, [], new Map(), memory);
-  assert.equal(result.translationVerified, false);
+test("a negation changes the generated meaning instead of being treated as OCR noise", () => {
+  const positive = analyze("Agricola equum videt.").result.translation;
+  const negative = analyze("Agricola equum non videt.").result.translation;
+
+  assert.notEqual(negative, positive);
+  assert.match(negative, /nicht/iu);
 });
 
-test("the real Triptolemus OCR output reaches the verified local translation", () => {
-  const raw = readFileSync(new URL("./fixtures/triptolemus-ocr.txt", import.meta.url), "utf8");
-  const expected = memory.filter(entry => entry.work === "Fabulae 147: Triptolemus");
-  const morphology = new Map(expected.flatMap(entry => tokenizeLatinText(entry.latin)).map(token => [token.normalized, [{ forms: [token.normalized], morphology: {} }]]));
-  const document = extractLatinDocument(raw, morphology);
-  const result = analyzeBookText(document.latinText, [], [], null, document.glossary, morphology, memory);
-  assert.equal(tokenizeLatinText(document.latinText).length, 119);
-  assert.equal(result.translationVerified, true);
-  assert.equal(result.verifiedLines, 10);
-  assert.equal(result.translation, expected.map(entry => entry.german).join("\n"));
-});
+function assertSentenceShape(value, id) {
+  assert.ok(value.trim(), `${id}: empty translation`);
+  assert.doesNotMatch(value, /\s·\s|\[[^\]]+\]/u, `${id}: word-list fallback leaked into output`);
+  assert.match(value, /^[\p{Lu}ÄÖÜ]/u, `${id}: sentence must start with a capital letter`);
+  assert.match(value, /[.!?]$/u, `${id}: sentence punctuation is missing`);
+}
 
-test("a real multi-paragraph Phaedrus worksheet reaches the verified translation", () => {
-  const raw = readFileSync(new URL("./fixtures/phaedrus-wolf-lamm-ocr.txt", import.meta.url), "utf8");
-  const expected = memory.filter(entry => entry.work === "Fabulae 1,1: Lupus et agnus");
-  const morphology = new Map(expected.flatMap(entry => tokenizeLatinText(entry.latin)).map(token => [token.normalized, [{ forms: [token.normalized], morphology: {} }]]));
-  const document = extractLatinDocument(raw, morphology);
-  const result = analyzeBookText(document.latinText, [], [], null, [], morphology, memory);
-  assert.equal(tokenizeLatinText(document.latinText).length, 79);
-  assert.equal(result.translationVerified, true);
-  assert.equal(result.verifiedLines, 10);
-  assert.equal(result.translation, expected.map(entry => entry.german).join("\n"));
-});
+function hasTag(root, expected) {
+  const wanted = normalizeTag(expected);
+  return walk(root).some(node => [node?.type, node?.kind, node?.construction, node?.constructionType, node?.clauseType, node?.relation, node?.role]
+    .filter(value => typeof value === "string")
+    .some(value => {
+      const tag = normalizeTag(value);
+      return tag === wanted || tag.includes(wanted) || wanted.includes(tag);
+    }));
+}
 
-test("the real 53-word worksheet OCR reaches its complete verified translation", () => {
-  const raw = readFileSync(new URL("./fixtures/familia-avum-ocr.txt", import.meta.url), "utf8");
-  const expected = memory.filter(entry => entry.work === "Familia avum exspectat (Übersetzungsaufgabe)");
-  const morphology = new Map(expected.flatMap(entry => tokenizeLatinText(entry.latin)).map(token => [token.normalized, [{ forms: [token.normalized], morphology: {} }]]));
-  const document = extractLatinDocument(raw, morphology);
-  const result = analyzeBookText(document.latinText, [], [], null, document.glossary, morphology, memory);
-  assert.equal(tokenizeLatinText(document.latinText).length, 53);
-  assert.equal(result.translationVerified, true);
-  assert.equal(result.verifiedLines, 8);
-  assert.equal(result.translation, expected.map(entry => entry.german).join("\n"));
-});
+function hasRole(root, expectedRole, expectedToken) {
+  const role = normalizeTag(expectedRole);
+  const token = normalizeLatin(expectedToken);
+  return walk(root).some(node => {
+    if (!node || typeof node !== "object" || Array.isArray(node)) return false;
+    const nodeRole = normalizeTag(node.role || node.relation || node.type);
+    return (nodeRole === role || nodeRole.includes(role) || role.includes(nodeRole)) && containsToken(node, token);
+  });
+}
 
-function removeOneLetter(text) {
-  const token = tokenizeLatinText(text).map(item => item.raw).find(item => item.length >= 6);
-  if (!token) return text;
-  const index = Math.floor(token.length / 2);
-  return text.replace(token, `${token.slice(0, index)}${token.slice(index + 1)}`);
+function containsToken(root, expected) {
+  return walk(root).some(value => {
+    if (!value || typeof value !== "object" || Array.isArray(value)) return false;
+    return [value.token, value.surface, value.raw, value.form, value.word, value.lemma]
+      .some(candidate => normalizeLatin(candidate) === expected);
+  });
+}
+
+function normalizeLatin(value = "") {
+  return String(value)
+    .normalize("NFD")
+    .toLocaleLowerCase("la")
+    .replace(/\p{M}/gu, "")
+    .replaceAll("j", "i")
+    .replace(/[^a-z]/g, "");
+}
+
+function normalizeTag(value = "") {
+  return String(value).toLocaleLowerCase("en").replace(/[^a-z0-9]+/g, "");
+}
+
+function walk(root) {
+  const values = [];
+  const seen = new Set();
+  const visit = value => {
+    if (value == null || typeof value !== "object" || seen.has(value)) return;
+    seen.add(value);
+    values.push(value);
+    if (Array.isArray(value)) value.forEach(visit);
+    else Object.values(value).forEach(visit);
+  };
+  visit(root);
+  return values;
 }

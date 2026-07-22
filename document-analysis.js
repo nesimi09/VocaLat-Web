@@ -136,9 +136,6 @@ function cleanLatinText(value) {
     .replace(/[ \t]+/g, " ")
     .replace(/\s*\n\s*/g, " ")
     .replace(/\s+([,.;:!?])/g, "$1")
-    .replace(/\bmortales puerem crescere\b/giu, "mortales puerum crescere")
-    .replace(/\bin curro draconibus iuncto\b/giu, "in curru draconibus iuncto")
-    .replace(/\bavel\s*\*/giu, "ave")
     .trim();
 }
 
@@ -152,12 +149,7 @@ function looksLikeGlossary(value) {
 function cleanGlossaryMeaning(value) {
   return String(value)
     .replace(/^[\s»=:\-]+/, "")
-    .trim()
-    .replace(/verschmiühen|verschmahen/gi, "verschmähen")
-    .replace(/sáugen/gi, "säugen")
-    .replace(/tóten/gi, "töten")
-    .replace(/besüen/gi, "besäen")
-    .replace(/verschmihen/gi, "verschmähen");
+    .trim();
 }
 
 function inferGlossaryPart(line) {

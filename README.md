@@ -9,23 +9,21 @@ Responsive Web-Version der VocaLat-iOS-App mit allen Vokabeln, Grammatikabschnit
 - Frei kombinierbare Tests aus einer oder mehreren Lektionen, als Karteikarte, Multiple Choice oder Texteingabe
 - Didaktisch sortierte Grammatik mit zusammenhängenden Formenfolgen, responsiven Tabellen und Vor-/Zurück-Navigation
 - Sitzungsgebundener Lernfortschritt über `sessionStorage`; keine dauerhaften Web-Lerndaten und aktuell kein Login
-- Bild-Upload mit Tesseract.js-Fallback sowie optionaler lokaler Bildprüfung durch Qwen 3.5 Vision
-- Natürliche Latein-Deutsch-Übersetzung mit TranslateGemma und lokaler Gemma-Schlussprüfung; Buchvokabeln haben Vorrang
+- Bild-Upload mit vollständig lokal im Browser laufender Tesseract.js-Texterkennung
+- Allgemeine Latein-Deutsch-Pipeline aus Tokenisierung, Formenlehre, Satzanalyse, grammatischer Interpretation, Bedeutungsauswahl, deutscher Satzbildung und Nachbearbeitung
 - Grammatikübungen lassen sich auf die aktuelle Buchlektion begrenzen, damit spätere Regeln nicht vorweggenommen werden
 - Responsive Navigation für Smartphone, Tablet und Desktop
 - Hell-/Dunkelmodus und installierbare PWA mit Offline-Cache
 
 ## Übersetzung
 
-Der kleine App-Rahmen und das Zusatzwörterbuch werden bei der PWA-Installation offline gespeichert. Die größeren OCR- und Formendateien lädt die App erst bei der ersten Übersetzung von derselben Website und legt sie anschließend im separaten Runtime-Cache ab. Auf einer rein statischen GitHub Page laufen Tesseract.js, Formenprüfung, Buchwörterbuch und der regelbasierte Übersetzer vollständig im Browser.
+Der App-Rahmen und das Zusatzwörterbuch werden bei der PWA-Installation offline gespeichert. Die größeren OCR- und Formendateien lädt die App erst bei der ersten Übersetzung von derselben Website und legt sie anschließend im separaten Runtime-Cache ab. Auf einer statischen GitHub Page laufen Tesseract.js, Formenprüfung, Buchwörterbuch und Übersetzer vollständig im Browser; Bilder und Texte werden dafür nicht an einen Übersetzungsdienst gesendet.
 
-Wird die App mit `npm start` betrieben, nutzt sie zusätzlich lokal installierte Ollama-Modelle: Qwen 3.5 Vision liest den lateinischen Haupttext direkt aus dem Bild und gleicht ihn mit der Browser-OCR ab; TranslateGemma formuliert kurze zusammenhängende Satzgruppen; Gemma 3 prüft Satzabdeckung, deutsche Grammatik und die passenden Bedeutungen aus dem Schulbuch. Fehlt ein Wort im Buch, wird das lokale FreeDict-Wörterbuch als nachrangiger Hinweis verwendet. Es wird keine externe OCR- oder Übersetzungs-API aufgerufen. Beim Zugriff über einen Tunnel wird das Bild selbstverständlich an diesen selbst betriebenen VocaLat-Server übertragen.
+Nach der Bildauswahl startet die Verarbeitung automatisch. Auf gemischten Arbeitsblättern wird der lateinische Haupttext von Logos, deutschen Einleitungen, Überschriften, Wortzahlen, Randspalten und Fußnoten getrennt; Vokabelhilfen aus dem Bild werden trotzdem als Kontext übernommen. Makron- und Akzentvarianten werden normalisiert. Fehlende oder verwechselte Buchstaben werden nur dann korrigiert, wenn die vorgeschlagene Form morphologisch plausibel ist.
 
-Nach der Bildauswahl startet die Verarbeitung automatisch. Auf gemischten Arbeitsblättern wird der lateinische Haupttext von Logos, deutschen Einleitungen, Überschriften, Wortzahlen, Randspalten und Fußnoten getrennt; Vokabelhilfen aus dem Bild werden trotzdem als Kontext übernommen. Makron-/Akzentvarianten werden normalisiert, fehlende oder verwechselte Buchstaben werden nur bei morphologisch und syntaktisch plausiblen Formen korrigiert, und Flexionsformen werden auf ihre Lemmata zurückgeführt. Für fehlende Lemmata steht ein lokal mitgeliefertes FreeDict-Wörterbuch mit 5.484 Einträgen bereit. Die eingeklappte Detailansicht zeigt erkannten Text, Formen, Quellen und Grammatikregeln.
+Der Übersetzer speichert keine fertigen Übersetzungen bekannter Sätze. Jedes Eingabewort behält zunächst seine möglichen Formen und Bedeutungen. Danach bestimmt der Parser Satzgrenzen, Satzglieder, Kongruenzen und Konstruktionen wie AcI, NcI, Ablativus absolutus, Partizipien, Gerundiv sowie wichtige Neben- und Relativsätze. Erst auf dieser Grundlage wird eine Bedeutung gewählt und ein deutscher Satz erzeugt. Buchvokabeln erhalten bei einer grammatisch passenden Analyse Vorrang; für fehlende Lemmata steht das lokal mitgelieferte FreeDict-Wörterbuch mit 5.484 Einträgen bereit.
 
-Die lokale Referenzbasis enthält selbst formulierte und geprüfte deutsche Übersetzungen von 69 Abschnitten mit insgesamt 965 lateinischen Wörtern aus Hyginus, Caesar, Cicero, Phaedrus, Cornelius Nepos, Seneca, Sallust, Ovid, Livius und dem zusätzlich geprüften 53-Wörter-Arbeitsblatt „Familia avum exspectat“. Der Abgleich funktioniert auch bei fehlenden Satzzeichen und einzelnen ausgelassenen oder verwechselten OCR-Buchstaben. Eine Negation oder ein ganzes fehlendes Wort wird aus Sicherheitsgründen nicht stillschweigend ergänzt. Unbekannte komplexe Sätze werden analysiert, aber nicht mehr als scheinbar sichere Wortsalat-Übersetzung ausgegeben; nur eng begrenzte, getestete einfache Satzmuster erhalten einen ungeprüften Vorschlag.
-
-Zusätzlich zum Satzkorpus liegen Regressionstests mit den echten OCR-Ausgaben der Arbeitsblätter „Nessus“, „Triptolemus“ und „Lupus et agnus“ vor. Sie decken Seiten ohne Leerzeilen, gemischte deutsch-lateinische Blöcke, mehrere Vokabelhilfen pro Fußnotenzeile, große Absatzabstände und fehlerhafte Zeilennummern ab.
+Die Übersetzungstests verwenden einen getrennten Holdout-Korpus mit künstlich zusammengestellten Sätzen. Er enthält keine vollständigen deutschen Musterübersetzungen. Geprüft werden stattdessen Satzglieder, erkannte Konstruktionen, notwendige Bedeutungsbestandteile, Abdeckung und die Unabhängigkeit von der lateinischen Wortstellung. Die OCR-Regressionstests prüfen davon getrennt die Extraktion aus unterschiedlich aufgebauten Arbeitsblättern.
 
 ## Geführter Kurs und Kurs-Pass
 
@@ -43,23 +41,15 @@ Tesseract.js 7.0.0, Tesseract.js Core 7.0.0 und das lateinische Tesseract-Sprach
 
 Die Formenprüfung verwendet den TypeScript-Port von Whitaker’s Words 0.1.1 (MIT; ursprüngliche WORDS-Daten frei verwendbar). Das Latein-Deutsch-Zusatzwörterbuch basiert auf FreeDict `lat-deu` 1.0.3 (GPL-3.0-or-later); Quelle, Autoren- und Lizenzdateien liegen unter `vendor/freedict`.
 
-## Mit lokalem Übersetzungsmodell starten
+## Lokale Vorschau starten
 
-Voraussetzung ist ein laufendes [Ollama](https://ollama.com/). Die Modelle werden einmalig lokal geladen:
-
-```bash
-ollama pull qwen3.5:9b
-ollama pull translategemma:12b
-ollama pull gemma3:12b
-```
-
-Danach startet der Node-Server App und Übersetzungsendpunkt gemeinsam:
+Der lokale Webserver startet die gleiche Browser-App wie GitHub Pages. Dafür ist kein KI-Modell erforderlich:
 
 ```bash
 npm start
 ```
 
-Danach `http://127.0.0.1:8080` öffnen. Andere Modelle oder Ports lassen sich über `OLLAMA_MODEL`, `OLLAMA_TRANSLATION_MODEL`, `OLLAMA_REVIEW_MODEL`, `OLLAMA_URL`, `HOST` und `PORT` festlegen. Fehlt Gemma 3, wird Qwen für die Schlussprüfung verwendet; fehlt TranslateGemma, übernimmt das allgemeine lokale Modell die Übersetzung. Ohne Serverendpunkt bleibt die statische Browserübersetzung verfügbar.
+Danach `http://127.0.0.1:8080` öffnen. Für eine andere Portnummer kann `PORT` gesetzt werden.
 
 ## Prüfen
 
@@ -67,6 +57,4 @@ Danach `http://127.0.0.1:8080` öffnen. Andere Modelle oder Ports lassen sich ü
 npm test
 npm run test:corpus
 npm run check
-# bei laufendem npm-start-Server zusätzlich:
-npm run test:model
 ```

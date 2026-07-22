@@ -1,0 +1,317 @@
+{
+  "description": "Künstlich zusammengestellter Holdout-Korpus für die allgemeine Analysepipeline. Die Datei enthält bewusst keine vollständigen deutschen Referenzübersetzungen.",
+  "cases": [
+    {
+      "id": "transitive-sov",
+      "latin": "Agricola equum videt.",
+      "minimumCoverage": 100,
+      "roles": [
+        { "role": "subject", "token": "agricola" },
+        { "role": "direct-object", "token": "equum" }
+      ],
+      "concepts": ["Bauer", "Pferd", "(?:sieht|erblickt)"]
+    },
+    {
+      "id": "ditransitive-osv",
+      "latin": "Donum mater filio dat.",
+      "minimumCoverage": 100,
+      "roles": [
+        { "role": "subject", "token": "mater" },
+        { "role": "direct-object", "token": "donum" },
+        { "role": "indirect-object", "token": "filio" }
+      ],
+      "concepts": ["Mutter", "Sohn", "(?:(?:die|eine) Gabe|(?:das|ein) Geschenk)", "(?:gibt|gab|gegeben)"]
+    },
+    {
+      "id": "finite-passive",
+      "latin": "Epistula a matre scribitur.",
+      "minimumCoverage": 100,
+      "roles": [
+        { "role": "subject", "token": "epistula" },
+        { "role": "prepositional-object", "token": "matre" }
+      ],
+      "concepts": ["Brief", "Mutter", "geschrieb"]
+    },
+    {
+      "id": "perfect-active",
+      "latin": "Milites urbem ceperunt.",
+      "minimumCoverage": 100,
+      "roles": [
+        { "role": "subject", "token": "milites" },
+        { "role": "direct-object", "token": "urbem" }
+      ],
+      "concepts": ["Soldat", "Stadt", "(?:gefasst|erobert|eingenommen)"]
+    },
+    {
+      "id": "aci-perfect",
+      "latin": "Caesar dixit milites urbem cepisse.",
+      "minimumCoverage": 100,
+      "tags": ["aci"],
+      "concepts": ["Caesar", "Soldat", "Stadt", "(?:sagte|hat gesagt)", "(?:gefasst|erobert|eingenommen)"]
+    },
+    {
+      "id": "nci-perfect",
+      "latin": "Milites urbem cepisse dicuntur.",
+      "minimumCoverage": 100,
+      "tags": ["nci"],
+      "concepts": ["(?:Soldaten.+sollen.+Stadt.+(?:gefasst|erobert|eingenommen) haben|Von den Soldaten wird gesagt.+Stadt)"]
+    },
+    {
+      "id": "ablative-absolute",
+      "latin": "Urbe capta milites discesserunt.",
+      "minimumCoverage": 100,
+      "tags": ["ablative-absolute"],
+      "concepts": ["(?:Nachdem|Als|Nach der).+Stadt", "Soldat", "(?:gingen|zogen|wichen|verließen)"]
+    },
+    {
+      "id": "purpose-clause",
+      "latin": "Dux milites misit ut urbem defenderent.",
+      "minimumCoverage": 100,
+      "tags": ["final"],
+      "concepts": ["Anführer.+(?:(?:schickt|schickte|sandte).+Soldat|Soldat.+geschickt).+(?:damit|um).+Stadt.+verteidig"]
+    },
+    {
+      "id": "relative-clause",
+      "latin": "Puella, quam magister laudat, diligenter laborat.",
+      "minimumCoverage": 100,
+      "tags": ["relative-clause"],
+      "roles": [
+        { "role": "antecedent", "token": "puella" }
+      ],
+      "concepts": ["Mädchen", "Lehrer", "lobt", "arbeitet"]
+    },
+    {
+      "id": "indirect-question",
+      "latin": "Magister rogat cur discipuli taceant.",
+      "minimumCoverage": 100,
+      "tags": ["indirect-question"],
+      "concepts": ["Lehrer.+fragt.+warum.+(?:die )?Schüler.+schweig"],
+      "forbiddenPatterns": ["\\?"]
+    },
+    {
+      "id": "temporal-cum",
+      "latin": "Cum hostes appropinquarent, cives portas clauserunt.",
+      "minimumCoverage": 100,
+      "tags": ["temporal"],
+      "concepts": ["(?:Als|Während).+(?:Feinde|Gegner).+(?:näher|heran).+(?:(?:schlossen|verschlossen).+(?:Bürger|Einwohner).+(?:Tore|Pforten)|(?:Bürger|Einwohner).+(?:Tore|Pforten).+geschlossen)"]
+    },
+    {
+      "id": "real-conditional",
+      "latin": "Si laboras, disces.",
+      "minimumCoverage": 100,
+      "tags": ["conditional"],
+      "concepts": ["Wenn", "arbeit", "lern"]
+    },
+    {
+      "id": "gerundive-obligation",
+      "latin": "Liber discipulo legendus est.",
+      "minimumCoverage": 100,
+      "tags": ["gerundive-obligation"],
+      "concepts": ["(?:Schüler.+muss.+(?:das|ein) Buch.+lesen|Buch.+muss.+(?:vom|von dem) Schüler.+gelesen werden)"]
+    },
+    {
+      "id": "present-participle",
+      "latin": "Puer librum legens ambulat.",
+      "minimumCoverage": 100,
+      "tags": ["present-participle"],
+      "concepts": ["(?:(?:Junge|Kind).+Buch.+(?:liest|lesend).+(?:geht|läuft|spaziert)|(?:Junge|Kind).+(?:geht|läuft|spaziert).+während.+Buch.+liest)"]
+    },
+    {
+      "id": "negative-command",
+      "latin": "Ne timeas!",
+      "minimumCoverage": 100,
+      "concepts": ["^(?:Fürchte dich nicht|Hab keine Angst|Du sollst dich nicht fürchten)[.!]$"]
+    },
+    {
+      "id": "aci-fronted-object",
+      "latin": "Scimus urbem hostes cepisse.",
+      "minimumCoverage": 100,
+      "tags": ["aci"],
+      "concepts": ["Wir.+wissen.+dass.+Feinde.+Stadt.+(?:gefasst|erobert|eingenommen).+haben"],
+      "forbiddenPatterns": ["Feinde wissen", "Stadt.+hat"]
+    },
+    {
+      "id": "comparative-quam",
+      "latin": "Marcus fortior quam Quintus est.",
+      "minimumCoverage": 100,
+      "tags": ["comparison"],
+      "concepts": ["Marcus.+(?:mutiger|stärker).+als.+Quintus"],
+      "forbiddenPatterns": ["Fünf", "als.+(?:mutig|stark).+als"]
+    },
+    {
+      "id": "causal-quod",
+      "latin": "Quod hostes appropinquabant, cives timebant.",
+      "minimumCoverage": 100,
+      "tags": ["causal"],
+      "concepts": ["Weil.+Feinde.+näher.+fürchteten.+Bürger"],
+      "forbiddenPatterns": ["^Was"]
+    },
+    {
+      "id": "consecutive-correlative",
+      "latin": "Tam fortis erat ut omnes eum laudarent.",
+      "minimumCoverage": 100,
+      "tags": ["consecutive"],
+      "concepts": ["so.+mutig.+dass.+alle.+ihn.+lobten"]
+    },
+    {
+      "id": "gerundive-attraction-purpose",
+      "latin": "Dux milites ad urbem defendendam misit.",
+      "minimumCoverage": 100,
+      "tags": ["gerundive-purpose"],
+      "concepts": ["Anführer.+Soldaten.+(?:geschickt|schickte).+um.+Stadt.+zu verteidigen"],
+      "forbiddenPatterns": ["zu verteidigenden Stadt"]
+    },
+    {
+      "id": "supine-purpose",
+      "latin": "Legati pacem petitum venerunt.",
+      "minimumCoverage": 100,
+      "tags": ["supine-purpose"],
+      "concepts": ["Gesandten.+(?:gekommen|kamen).+um.+Frieden.+zu erbitten"]
+    },
+    {
+      "id": "gerund-with-modifier",
+      "latin": "Ars bene dicendi difficilis est.",
+      "minimumCoverage": 100,
+      "tags": ["gerund"],
+      "concepts": ["Kunst.+gut.+zu sagen.+schwierig"]
+    },
+    {
+      "id": "direct-subject-question",
+      "latin": "Quis hoc fecit?",
+      "minimumCoverage": 100,
+      "tags": ["question"],
+      "concepts": ["^Wer.+dies.+getan\\?$"]
+    },
+    {
+      "id": "irregular-conditional",
+      "latin": "Si vis pacem, para bellum.",
+      "minimumCoverage": 100,
+      "tags": ["conditional"],
+      "concepts": ["Wenn.+du.+Frieden.+willst.+bereite.+Krieg"],
+      "forbiddenPatterns": ["Kraft", "Paar"]
+    },
+    {
+      "id": "impersonal-gerundive",
+      "latin": "Nunc est bibendum.",
+      "minimumCoverage": 100,
+      "tags": ["gerundive-obligation"],
+      "concepts": ["Jetzt.+muss.+getrunken.+werden"]
+    },
+    {
+      "id": "infinitive-subject",
+      "latin": "Errare humanum est.",
+      "minimumCoverage": 100,
+      "tags": ["infinitive-subject"],
+      "concepts": ["Irren.+ist.+menschlich"]
+    },
+    {
+      "id": "demonstrative-object",
+      "latin": "Haec verba intellegimus.",
+      "minimumCoverage": 100,
+      "concepts": ["Wir.+diese.+Worte"],
+      "forbiddenPatterns": ["diese die"]
+    },
+    {
+      "id": "locative-and-motion",
+      "latin": "Cum Romam venissem, amicum vidi.",
+      "minimumCoverage": 100,
+      "tags": ["temporal-anterior"],
+      "concepts": ["Nachdem.+ich.+nach Rom.+gekommen war.+sah ich.+Freund"],
+      "forbiddenPatterns": ["Romam", "sah der Freund"]
+    },
+    {
+      "id": "indirect-object-question",
+      "latin": "Nescio quid puer faciat.",
+      "minimumCoverage": 100,
+      "tags": ["indirect-question"],
+      "roles": [
+        { "role": "subject", "token": "puer" },
+        { "role": "direct-object", "token": "quid" }
+      ],
+      "concepts": ["Ich.+weiß nicht.+was.+Kind.+tut"],
+      "forbiddenPatterns": ["\\?"]
+    },
+    {
+      "id": "relative-dative",
+      "latin": "Vir cui puella librum dedit discessit.",
+      "minimumCoverage": 100,
+      "tags": ["relative-clause"],
+      "roles": [
+        { "role": "antecedent", "token": "vir" },
+        { "role": "indirect-object", "token": "cui" }
+      ],
+      "concepts": ["Mann.+dem.+Mädchen.+Buch.+gab.+ging weg"]
+    },
+    {
+      "id": "aci-predicate-accusative",
+      "latin": "Caesar dixit se victorem esse.",
+      "minimumCoverage": 100,
+      "tags": ["aci"],
+      "concepts": ["Caesar.+sagte.+dass.+er.+(?:ein )?Sieger.+war"],
+      "forbiddenPatterns": ["den Sieger war"]
+    },
+    {
+      "id": "deponent-german-government",
+      "latin": "Milites ducem sequuntur.",
+      "minimumCoverage": 100,
+      "roles": [
+        { "role": "subject", "token": "milites" },
+        { "role": "direct-object", "token": "ducem" }
+      ],
+      "concepts": ["Soldaten.+folgen.+dem Anführer"],
+      "forbiddenPatterns": ["werden.+gefolgt", "den Anführer"]
+    },
+    {
+      "id": "genitive-attribute",
+      "latin": "Templum deae magnum est.",
+      "minimumCoverage": 100,
+      "roles": [
+        { "role": "genitive-attribute", "token": "deae" }
+      ],
+      "concepts": ["Tempel.+der Göttin.+ist.+groß"],
+      "forbiddenPatterns": ["ist der Göttin groß"]
+    },
+    {
+      "id": "ablative-instrument",
+      "latin": "Miles gladio hostem vulneravit.",
+      "minimumCoverage": 100,
+      "concepts": ["Soldat.+Feind.+mit dem Schwert.+verwundet"],
+      "forbiddenPatterns": ["dem Schwert den Feind"]
+    },
+    {
+      "id": "ablative-comparison",
+      "latin": "Marcus Quinto fortior est.",
+      "minimumCoverage": 100,
+      "tags": ["comparison"],
+      "concepts": ["Marcus.+(?:mutiger|stärker).+als.+Quintus"],
+      "forbiddenPatterns": ["Quinto"]
+    },
+    {
+      "id": "semideponent-perfect",
+      "latin": "Puer hoc facere ausus est.",
+      "minimumCoverage": 100,
+      "tags": ["complementary-infinitive"],
+      "concepts": ["Kind.+hat.+dies.+zu tun.+gewagt"],
+      "forbiddenPatterns": ["wurde.+gewagt"]
+    },
+    {
+      "id": "subject-apposition",
+      "latin": "Cicero consul urbem servavit.",
+      "minimumCoverage": 100,
+      "roles": [
+        { "role": "apposition", "token": "consul" }
+      ],
+      "concepts": ["Cicero.+Konsul.+Stadt.+(?:bewahrt|gerettet)"]
+    },
+    {
+      "id": "vocative-imperative",
+      "latin": "Marce, ianuam claude!",
+      "minimumCoverage": 100,
+      "roles": [
+        { "role": "vocative", "token": "Marce" },
+        { "role": "direct-object", "token": "ianuam" }
+      ],
+      "concepts": ["Marcus.+schließ.+Tür"]
+    }
+  ]
+}

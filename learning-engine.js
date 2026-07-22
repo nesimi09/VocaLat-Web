@@ -85,7 +85,7 @@ export function tokenizeLatinText(text = "") {
 const RESOLVED_STATUSES = new Set(["exact", "book-form", "fallback", "contextual", "proper", "corrected", "ambiguous"]);
 const SOURCE_PRIORITY = { "proper-context": 5, glossary: 4, book: 3, fallback: 2, proper: 1 };
 
-export function analyzeBookText(text, vocabulary, grammarSections, maxLesson = null, fallbackEntries = [], morphologyAnalyses = new Map(), translationMemory = []) {
+export function analyzeBookText(text, vocabulary, grammarSections, maxLesson = null, fallbackEntries = [], morphologyAnalyses = new Map()) {
   const allowedVocabulary = vocabulary.filter(entry => maxLesson == null || Number(entry.lektion) <= Number(maxLesson));
   const sourceLines = splitLatinUnits(text);
   const sourceTokens = sourceLines.flatMap(line => tokenizeLatinText(line));
@@ -113,15 +113,10 @@ export function analyzeBookText(text, vocabulary, grammarSections, maxLesson = n
     addGrammarRule(grammar, grammarSections, "Präsens Aktiv", "Eine finite Verbform im Präsens Aktiv wurde über Person und Numerus bestimmt.", false);
   }
 
-  const passageMatches = findTranslationMemoryPassage(text, translationMemory);
-  const translatedLines = passageMatches?.length
-    ? passageMatches.map(match => ({ text: match.german, verified: true, reliable: true }))
-    : lineAnalyses.map(line => {
-      const verified = findTranslationMemoryMatch(line.source, translationMemory);
-      const syntax = verified ? null : translateLatinSyntax(line.matches);
-      const reliable = Boolean(verified) || Boolean(syntax?.reliable);
-      return { text: verified?.german || syntax?.text || translateLatinLine(line.matches), verified: Boolean(verified), reliable, syntax };
-    });
+  const translatedLines = lineAnalyses.map(line => {
+    const syntax = translateLatinSyntax(line.matches, { source: line.source });
+    return { text: syntax?.text || "", reliable: Boolean(syntax?.reliable), syntax };
+  });
   const translationReliable = translatedLines.length > 0 && translatedLines.every(line => line.reliable);
 
   return {
@@ -129,8 +124,6 @@ export function analyzeBookText(text, vocabulary, grammarSections, maxLesson = n
     correctedText: lineAnalyses.map(line => correctedLatinLine(line.source, line.matches)).join("\n"),
     translation: translatedLines.map(line => line.text).filter(Boolean).join("\n"),
     translationReliable,
-    verifiedLines: translatedLines.filter(line => line.verified).length,
-    translationVerified: translatedLines.length > 0 && translatedLines.every(line => line.verified),
     maxLesson,
     tokenCount: tokens.length,
     coveredWords,
@@ -152,75 +145,6 @@ function correctedLatinLine(source, matches) {
   return String(source).replace(LATIN_WORD_PATTERN, original => replacements[index++] || original);
 }
 
-function findTranslationMemoryMatch(source, entries) {
-  const sourceTokens = tokenizeLatinText(source).map(token => token.normalized);
-  if (sourceTokens.length < 4) return null;
-  let best = null;
-  for (const entry of entries || []) {
-    const candidateTokens = tokenizeLatinText(entry.latin).map(token => token.normalized);
-    if (sourceTokens.length !== candidateTokens.length || hasCriticalTokenMismatch(sourceTokens, candidateTokens)) continue;
-    const similarity = ocrCompatibleTokenSimilarity(sourceTokens, candidateTokens);
-    if (similarity == null) continue;
-    if (similarity >= .88 && (!best || similarity > best.similarity)) best = { ...entry, similarity };
-  }
-  return best;
-}
-
-function findTranslationMemoryPassage(source, entries) {
-  const sourceTokens = tokenizeLatinText(source).map(token => token.normalized);
-  if (sourceTokens.length < 4) return null;
-  const candidates = (entries || [])
-    .map(entry => ({ entry, tokens: tokenizeLatinText(entry.latin).map(token => token.normalized) }))
-    .filter(candidate => candidate.tokens.length >= 4);
-  const states = Array(sourceTokens.length + 1).fill(null);
-  states[0] = { score: 0, weight: 0, matches: [] };
-
-  for (let start = 0; start < sourceTokens.length; start += 1) {
-    const state = states[start];
-    if (!state) continue;
-    for (const candidate of candidates) {
-      const observedLength = candidate.tokens.length;
-      if (start + observedLength > sourceTokens.length) continue;
-      const observed = sourceTokens.slice(start, start + observedLength);
-      if (hasCriticalTokenMismatch(observed, candidate.tokens)) continue;
-      const similarity = ocrCompatibleTokenSimilarity(observed, candidate.tokens);
-      if (similarity == null) continue;
-      const threshold = candidate.tokens.length <= 6 ? .92 : .88;
-      if (similarity < threshold) continue;
-      const end = start + observedLength;
-      const next = {
-        score: state.score + similarity * candidate.tokens.length,
-        weight: state.weight + candidate.tokens.length,
-        matches: [...state.matches, candidate.entry]
-      };
-      const previous = states[end];
-      if (!previous || next.score / next.weight > previous.score / previous.weight) states[end] = next;
-    }
-  }
-
-  const complete = states[sourceTokens.length];
-  return complete && complete.score / complete.weight >= .9 ? complete.matches : null;
-}
-
-function hasCriticalTokenMismatch(observed, candidate) {
-  const critical = new Set(["haud", "ne", "nec", "neque", "nihil", "nisi", "non", "num", "sine"]);
-  for (const token of critical) {
-    if (observed.filter(word => word === token).length !== candidate.filter(word => word === token).length) return true;
-  }
-  return false;
-}
-
-function ocrCompatibleTokenSimilarity(observed, candidate) {
-  if (observed.length !== candidate.length) return null;
-  let cost = 0;
-  for (let index = 0; index < observed.length; index += 1) {
-    if (observed[index] === candidate[index]) continue;
-    if (Math.min(observed[index].length, candidate[index].length) < 4 || levenshtein(observed[index], candidate[index]) !== 1) return null;
-    cost += .25;
-  }
-  return 1 - cost / Math.max(observed.length, 1);
-}
-
 function splitLatinUnits(text) {
   const rawLines = String(text).split(/\n+/).map(line => line.trim()).filter(Boolean);
   if (rawLines.some(line => /^\d+\s*[.)]/.test(line))) {
@@ -239,22 +163,10 @@ function splitLatinUnits(text) {
 function analyzeTokens(tokens, index, morphologyAnalyses) {
   const matches = [];
   for (let position = 0; position < tokens.length;) {
-    const phrase = longestPhraseMatch(tokens, position, index.phrases);
-    if (phrase) {
-      matches.push(classifyExactMatch(phrase.raw, phrase.entries, phrase.length, [], phrase.key));
-      position += phrase.length;
-      continue;
-    }
-
     const token = tokens[position];
     const headwordEntries = index.words.get(token.normalized) || [];
     const externalMorphology = morphologyAnalyses.get(token.normalized) || [];
-    const formRecords = preferContextualCase(
-      mergeFormRecords(resolveFormRecords(token.normalized, index.forms), resolveMorphologyRecords(token.normalized, morphologyAnalyses, index)),
-      tokens,
-      position,
-      morphologyAnalyses
-    );
+    const formRecords = mergeFormRecords(resolveFormRecords(token.normalized, index.forms), resolveMorphologyRecords(token.normalized, morphologyAnalyses, index));
     if (headwordEntries.length) {
       const directMorphologyRecords = formRecords.filter(record => record.directLemma);
       const directLemmas = new Set(directMorphologyRecords.map(record => normalizeLatinWord(record.entry.lemma)));
@@ -294,12 +206,23 @@ function resolveMorphologyRecords(token, analyses, index) {
   for (const analysis of analyses.get(token) || []) {
     const directEntries = index.words.get(analysis.forms[0]) || [];
     const generatedEntries = analysis.forms.flatMap(form => (index.forms.get(form) || []).map(record => record.entry));
-    const rawEntries = directEntries.length ? directEntries : generatedEntries;
+    // Some dictionary records use a hidden lemma (reflexive `se`) or a
+    // citation spelling different from the locally stored surface headword
+    // (`Alpes`/`Alpis`).  If lemma and generated-form lookup both fail, an
+    // exact surface entry is still safe to pair by part of speech.  Inflected
+    // homographs such as librum/libra are not exact headwords and therefore
+    // cannot leak through this fallback.
+    const surfaceEntries = index.words.get(token) || [];
+    const rawEntries = directEntries.length ? directEntries : generatedEntries.length ? generatedEntries : surfaceEntries;
     const citationLemma = normalizeLatinWord(String(analysis.citation || "").match(/^([\p{L}\p{M}]+)/u)?.[1]);
     const citationCompatible = rawEntries.filter(entry => entry.source !== "proper-context" || normalizeLatinWord(entry.lemma) === citationLemma);
     const entries = rawEntries.some(entry => entry.source === "proper-context") ? citationCompatible : rawEntries;
     const compatible = entries.filter(entry => partOfSpeechMatches(entry.pos, analysis.morphology?.part));
-    for (const entry of preferredEntries(compatible.length ? compatible : entries)) records.push({ form: token, entry, morphology: analysis.morphology, directLemma: directEntries.includes(entry) });
+    // Keep every lexically compatible reading. Source priority is a signal for
+    // the later contextual selector, never a reason to discard a meaning here.
+    for (const entry of distinctEntries(compatible.length ? compatible : entries)) {
+      records.push({ form: token, entry, morphology: analysis.morphology, directLemma: directEntries.includes(entry) });
+    }
   }
   return records;
 }
@@ -307,42 +230,14 @@ function resolveMorphologyRecords(token, analyses, index) {
 function partOfSpeechMatches(entryPart, analysisPart) {
   if (!entryPart || entryPart === "x" || !analysisPart) return true;
   if (analysisPart === "ppa") return entryPart === "v" || entryPart === "ppa";
+  if (analysisPart === "pack") return entryPart === "pron" || entryPart === "adj";
   return entryPart === analysisPart;
-}
-
-function preferContextualCase(records, tokens, position, analyses) {
-  if (records.length < 2) return records;
-  const previous = tokens[position - 1];
-  const next = tokens[position + 1];
-  const accusativePrepositions = new Set(["ad", "ante", "apud", "contra", "inter", "ob", "per", "post", "propter", "trans"]);
-  const ablativePrepositions = new Set(["ab", "cum", "de", "ex", "pro", "sine"]);
-  const followingFiniteVerbs = tokens.slice(position + 1).filter(token => (analyses.get(token.normalized) || []).some(analysis => analysis.morphology?.part === "v" && analysis.morphology.mood && analysis.morphology.person)).length;
-  const clauseOpeningCum = previous?.normalized === "cum" && followingFiniteVerbs >= 2;
-  let preferredCase = ["salve", "salvete"].includes(previous?.normalized) ? "vocative"
-    : accusativePrepositions.has(previous?.normalized) ? "accusative"
-    : ablativePrepositions.has(previous?.normalized) && !clauseOpeningCum ? "ablative"
-      : null;
-
-  if (!preferredCase && previous && next) {
-    const previousCanBeSubject = (analyses.get(previous.normalized) || []).some(analysis => morphologyHasCase(analysis.morphology, "nominative"));
-    const nextIsFiniteVerb = (analyses.get(next.normalized) || []).some(analysis => analysis.morphology?.part === "v" && analysis.morphology.mood === "indicative" && analysis.morphology.person);
-    const hasAccusativeReading = records.some(record => morphologyHasCase(record.morphology, "accusative"));
-    if (previousCanBeSubject && nextIsFiniteVerb && hasAccusativeReading) preferredCase = "accusative";
-  }
-
-  if (!preferredCase) return records;
-  const matching = records.filter(record => morphologyHasCase(record.morphology, preferredCase));
-  return matching.length ? matching : records;
-}
-
-function morphologyHasCase(morphology, grammaticalCase) {
-  return String(morphology?.case || "").split("/").includes(grammaticalCase);
 }
 
 function mergeFormRecords(...groups) {
   const seen = new Set();
   return groups.flat().filter(record => {
-    const key = `${record.entry.source}|${record.entry.lemma}|${JSON.stringify(record.morphology)}`;
+    const key = `${record.entry.source}|${record.entry.lemma}|${record.entry.deutsch}|${JSON.stringify(record.morphology)}`;
     if (seen.has(key)) return false;
     seen.add(key);
     return true;
@@ -484,23 +379,10 @@ function headwordVariants(headword = "") {
   return String(headword).split("/").map(value => value.trim()).filter(Boolean);
 }
 
-function longestPhraseMatch(tokens, start, phrases) {
-  const lengths = [...phrases.keys()].map(key => key.split(" ").length);
-  const maxLength = Math.min(Math.max(0, ...lengths), tokens.length - start);
-  for (let length = maxLength; length >= 2; length -= 1) {
-    const key = tokens.slice(start, start + length).map(token => token.normalized).join(" ");
-    const entries = phrases.get(key);
-    if (entries?.length) {
-      return { raw: tokens.slice(start, start + length).map(token => token.raw).join(" "), entries, length, key };
-    }
-  }
-  return null;
-}
-
 function classifyExactMatch(token, entries, length, formRecords = [], canonicalForm = null) {
-  const senses = preferredEntries(entries);
+  const senses = candidateEntries(entries);
   const status = senses.length > 1 ? "ambiguous" : statusForSource(senses[0]?.source, false);
-  const selectedRecords = preferredRecords(formRecords, senses);
+  const selectedRecords = formRecords.filter(record => senses.includes(record.entry));
   return {
     token,
     normalized: normalizeLatinWord(token),
@@ -514,9 +396,9 @@ function classifyExactMatch(token, entries, length, formRecords = [], canonicalF
 }
 
 function classifyFormMatch(token, records, canonicalForm, forcedStatus = null) {
-  const entries = preferredEntries(records.map(record => record.entry));
-  const selectedRecords = preferredRecords(records, entries);
-  const source = entries[0]?.source;
+  const entries = candidateEntries(records.map(record => record.entry));
+  const selectedRecords = records.filter(record => entries.includes(record.entry));
+  const source = [...entries].sort((left, right) => (SOURCE_PRIORITY[right.source] || 0) - (SOURCE_PRIORITY[left.source] || 0))[0]?.source;
   const status = forcedStatus || statusForSource(source, true);
   return {
     token,
@@ -541,16 +423,17 @@ function preferredEntries(entries) {
   return distinct.filter(entry => (SOURCE_PRIORITY[entry.source] || 0) === highestPriority);
 }
 
+function candidateEntries(entries) {
+  return distinctEntries(entries).sort((left, right) =>
+    (SOURCE_PRIORITY[right.source] || 0) - (SOURCE_PRIORITY[left.source] || 0)
+  );
+}
+
 function statusForSource(source, inflected) {
   if (source === "book") return inflected ? "book-form" : "exact";
   if (source === "glossary") return "contextual";
   if (source === "proper" || source === "proper-context") return "proper";
   return "fallback";
-}
-
-function preferredRecords(records, entries) {
-  const allowed = new Set(entries);
-  return records.filter(record => allowed.has(record.entry));
 }
 
 function distinctEntries(entries) {
@@ -658,7 +541,18 @@ function generateSurfaceForms(entry) {
 function generateNounForms(entry, add) {
   const forms = entry.forms.map(normalizeLatinWord).filter(Boolean);
   const lemma = normalizeLatinWord(entry.lemma);
-  const genitive = forms.find(form => form !== lemma && /(?:ae|i|is|us|ei)$/.test(form));
+  const gender = /m\.\s*\/\s*f\.|f\.\s*\/\s*m\./i.test(entry.grammatik) ? "c"
+    : /\bf\./i.test(entry.grammatik) ? "f"
+      : /\bn\./i.test(entry.grammatik) ? "n"
+        : /\bm\./i.test(entry.grammatik) ? "m"
+          : undefined;
+  const pluralOnly = /\bPl\./i.test(entry.grammatik);
+  if (pluralOnly) {
+    const grammaticalCase = lemma.endsWith("a") || lemma.endsWith("es") ? "nominative/accusative" : "nominative";
+    add(lemma, { part: "n", case: grammaticalCase, number: "plural", gender });
+  }
+  const genitive = forms.find(form => form !== lemma && /(?:ae|i|is|us|ei)$/.test(form))
+    || (lemma.endsWith("is") ? lemma : null);
   if (!genitive) return;
   const paradigms = {
     ae: [["a", "nominative", "singular"], ["ae", "genitive/dative", "singular"], ["am", "accusative", "singular"], ["a", "ablative", "singular"], ["ae", "nominative", "plural"], ["arum", "genitive", "plural"], ["is", "dative/ablative", "plural"], ["as", "accusative", "plural"]],
@@ -670,8 +564,8 @@ function generateNounForms(entry, add) {
   const ending = ["ae", "ei", "is", "us", "i"].find(candidate => genitive.endsWith(candidate));
   if (!ending) return;
   const stem = genitive.slice(0, -ending.length);
-  add(lemma, { part: "n", case: "nominative", number: "singular" });
-  paradigms[ending].forEach(([suffix, grammaticalCase, number]) => add(stem + suffix, { part: "n", case: grammaticalCase, number }));
+  if (!pluralOnly) add(lemma, { part: "n", case: gender === "n" ? "nominative/accusative" : "nominative", number: "singular", gender });
+  paradigms[ending].forEach(([suffix, grammaticalCase, number]) => add(stem + suffix, { part: "n", case: grammaticalCase, number, gender }));
 }
 
 function generateAdjectiveForms(entry, add) {
@@ -695,18 +589,20 @@ function generateVerbForms(entry, add) {
   const infinitive = forms.find(form => /(?:are|ere|ire)$/.test(form));
   const firstPerson = forms.find(form => /(?:o|eo|io)$/.test(form));
   if (!infinitive) return;
-  add(infinitive, { part: "v", mood: "infinitive", tense: "present", voice: "active" });
+  const dictionaryLemma = firstPerson || normalizeLatinWord(entry.lemma) || infinitive;
+  const addVerb = (form, morphology = {}) => add(form, { ...morphology, dictionaryLemma });
+  addVerb(infinitive, { part: "v", mood: "infinitive", tense: "present", voice: "active" });
 
   let participleStem;
   if (infinitive.endsWith("are")) {
     const presentStem = infinitive.slice(0, -2);
     participleStem = presentStem + "nt";
     const root = presentStem.slice(0, -1);
-    [["o", 1, "singular"], ["as", 2, "singular"], ["at", 3, "singular"], ["amus", 1, "plural"], ["atis", 2, "plural"], ["ant", 3, "plural"]].forEach(([suffix, person, number]) => add(root + suffix, { part: "v", mood: "indicative", tense: "present", voice: "active", person, number }));
+    [["o", 1, "singular"], ["as", 2, "singular"], ["at", 3, "singular"], ["amus", 1, "plural"], ["atis", 2, "plural"], ["ant", 3, "plural"]].forEach(([suffix, person, number]) => addVerb(root + suffix, { part: "v", mood: "indicative", tense: "present", voice: "active", person, number }));
   } else if (infinitive.endsWith("ire")) {
     const root = infinitive.slice(0, -3);
     participleStem = root + "ient";
-    [["io", 1, "singular"], ["is", 2, "singular"], ["it", 3, "singular"], ["imus", 1, "plural"], ["itis", 2, "plural"], ["iunt", 3, "plural"]].forEach(([suffix, person, number]) => add(root + suffix, { part: "v", mood: "indicative", tense: "present", voice: "active", person, number }));
+    [["io", 1, "singular"], ["is", 2, "singular"], ["it", 3, "singular"], ["imus", 1, "plural"], ["itis", 2, "plural"], ["iunt", 3, "plural"]].forEach(([suffix, person, number]) => addVerb(root + suffix, { part: "v", mood: "indicative", tense: "present", voice: "active", person, number }));
   } else {
     const root = firstPerson?.endsWith("eo") ? firstPerson.slice(0, -2) : firstPerson?.endsWith("io") ? firstPerson.slice(0, -2) : infinitive.slice(0, -3);
     const endings = firstPerson?.endsWith("eo")
@@ -714,12 +610,12 @@ function generateVerbForms(entry, add) {
       : firstPerson?.endsWith("io")
         ? [["io", 1, "singular"], ["is", 2, "singular"], ["it", 3, "singular"], ["imus", 1, "plural"], ["itis", 2, "plural"], ["iunt", 3, "plural"]]
         : [["o", 1, "singular"], ["is", 2, "singular"], ["it", 3, "singular"], ["imus", 1, "plural"], ["itis", 2, "plural"], ["unt", 3, "plural"]];
-    endings.forEach(([suffix, person, number]) => add(root + suffix, { part: "v", mood: "indicative", tense: "present", voice: "active", person, number }));
+    endings.forEach(([suffix, person, number]) => addVerb(root + suffix, { part: "v", mood: "indicative", tense: "present", voice: "active", person, number }));
     participleStem = root + (firstPerson?.endsWith("io") ? "ient" : "ent");
   }
   const ppaNominative = participleStem.slice(0, -1) + "s";
-  add(ppaNominative, { part: "ppa", case: "nominative", number: "singular", tense: "present", voice: "active" });
-  [["is", "genitive", "singular"], ["i", "dative", "singular"], ["em", "accusative", "singular"], ["e", "ablative", "singular"], ["es", "nominative/accusative", "plural"], ["ia", "nominative/accusative", "plural"], ["ium", "genitive", "plural"], ["ibus", "dative/ablative", "plural"]].forEach(([suffix, grammaticalCase, number]) => add(participleStem + suffix, { part: "ppa", case: grammaticalCase, number, tense: "present", voice: "active" }));
+  addVerb(ppaNominative, { part: "ppa", case: "nominative", number: "singular", tense: "present", voice: "active" });
+  [["is", "genitive", "singular"], ["i", "dative", "singular"], ["em", "accusative", "singular"], ["e", "ablative", "singular"], ["es", "nominative/accusative", "plural"], ["ia", "nominative/accusative", "plural"], ["ium", "genitive", "plural"], ["ibus", "dative/ablative", "plural"]].forEach(([suffix, grammaticalCase, number]) => addVerb(participleStem + suffix, { part: "ppa", case: grammaticalCase, number, tense: "present", voice: "active" }));
 }
 
 function hasAblativeAbsolute(matches) {
@@ -728,165 +624,8 @@ function hasAblativeAbsolute(matches) {
   return matches.some((match, index) => index !== ppaIndex && hasMorphology(match, morphology => morphology.part === "n" && morphology.case?.includes("ablative") && morphology.number === "plural"));
 }
 
-function translateLatinLine(matches) {
-  if (!matches.length) return "";
-  const ppaIndex = matches.findIndex(match => hasMorphology(match, morphology => morphology.part === "ppa" && morphology.case?.includes("ablative") && morphology.number === "plural"));
-  const subjectIndex = matches.findIndex((match, index) => index !== ppaIndex && hasMorphology(match, morphology => morphology.part === "n" && morphology.case?.includes("ablative") && morphology.number === "plural"));
-  if (ppaIndex >= 0 && subjectIndex >= 0) {
-    const subject = germanNominativePlural(matches[subjectIndex].entries[0]);
-    const mainVerb = chooseGermanVerb(matches[ppaIndex].entries, subject);
-    const infinitiveIndex = matches.findIndex((match, index) => index !== ppaIndex && hasMorphology(match, morphology => morphology.part === "v" && morphology.mood === "infinitive"));
-    const objectIndex = infinitiveIndex >= 0
-      ? matches.findIndex((match, index) => index !== subjectIndex && index !== ppaIndex && index < infinitiveIndex && hasMorphology(match, morphology => morphology.part === "n"))
-      : -1;
-    const adverbMatches = matches.filter((match, index) => ![subjectIndex, ppaIndex, infinitiveIndex, objectIndex].includes(index) && (hasMorphology(match, morphology => morphology.part === "adv") || match.entries[0]?.pos === "adv" || /iterum.*iterumque/i.test(match.token)));
-    const adverbText = repeatedAdverbPhrase(adverbMatches) || adverbMatches.map(match => firstMeaning(match.entries[0])).join(" ");
-    const complement = infinitiveIndex >= 0 ? translateInfinitiveComplement(matches[infinitiveIndex], objectIndex >= 0 ? matches[objectIndex] : null) : "";
-    const predicate = [adverbText, complement, mainVerb].filter(Boolean).join(" ");
-    return `${capitalize(`Während ${subject} ${predicate}`)}.`;
-  }
-
-  const finiteClause = translateFiniteClause(matches);
-  if (finiteClause) return `${capitalize(finiteClause)}.`;
-
-  const words = matches.map(match => {
-    if (!RESOLVED_STATUSES.has(match.status) || !match.entries.length) return `[${match.token}]`;
-    const meaning = firstMeaning(match.entries[0]);
-    return match.morphology.some(item => item.enclitic === "que") ? `und ${meaning}` : meaning;
-  });
-  return `${capitalize(words.join(" ").replace(/\s+/g, " ").trim())}.`;
-}
-
-function translateFiniteClause(matches) {
-  const verbIndex = matches.findIndex(match => hasMorphology(match, morphology => morphology.part === "v" && morphology.mood === "indicative" && morphology.person));
-  if (verbIndex < 0) return "";
-  const verbMorphology = matches[verbIndex].morphology.find(morphology => morphology.part === "v" && morphology.mood === "indicative" && morphology.person);
-  const subjectIndex = matches.findIndex((match, index) => index !== verbIndex && hasMorphology(match, morphology => morphology.part === "n" && morphology.case?.includes("nominative") && morphology.number === verbMorphology.number));
-  if (subjectIndex < 0) return "";
-
-  const subjectMorphology = matches[subjectIndex].morphology.find(morphology => morphology.part === "n" && morphology.case?.includes("nominative") && morphology.number === verbMorphology.number);
-  const subject = germanNominative(matches[subjectIndex].entries[0], subjectMorphology);
-  const verb = germanFiniteVerb(matches[verbIndex].entries, verbMorphology);
-  if (!subject || !verb) return "";
-
-  const complements = matches
-    .map((match, index) => ({ match, index }))
-    .filter(({ index }) => ![subjectIndex, verbIndex].includes(index))
-    .map(({ match }) => {
-      if (!RESOLVED_STATUSES.has(match.status) || !match.entries.length) return `[${match.token}]`;
-      if (hasMorphology(match, morphology => morphology.part === "n" && morphology.case?.includes("accusative"))) return germanAccusative(match.entries[0]);
-      if (hasMorphology(match, morphology => morphology.part === "adv") || match.entries[0]?.pos === "adv") return firstMeaning(match.entries[0]);
-      return firstMeaning(match.entries[0]);
-    })
-    .filter(Boolean);
-  return [subject, verb, ...complements].join(" ");
-}
-
 function hasMorphology(match, predicate) {
   return match.morphology?.some(predicate) === true;
-}
-
-function translateInfinitiveComplement(verbMatch, objectMatch) {
-  const lemma = normalizeLatinWord(verbMatch.entries[0]?.lemma || verbMatch.entries[0]?.latein);
-  if (lemma === "pergere" && objectMatch) return `${germanAccusative(objectMatch.entries[0])} fortsetzen`;
-  const verb = chooseGermanVerb(verbMatch.entries);
-  return objectMatch ? `${germanAccusative(objectMatch.entries[0])} ${verb}` : verb;
-}
-
-function chooseGermanVerb(entries, subject = "") {
-  const entry = entries[0];
-  const lemma = normalizeLatinWord(entry?.lemma || entry?.latein);
-  const meanings = entries.flatMap(item => item.meanings || [item.deutsch]).flatMap(splitMeanings);
-  if (["cupere", "cupio"].includes(lemma)) return meanings.find(meaning => /wollen/i.test(meaning)) || "wollen";
-  if (["instare", "insto"].includes(lemma) && /Gefahr/i.test(subject)) return "drohen";
-  if (["cantare", "canto"].includes(lemma)) return "singen";
-  if (["amare", "amo"].includes(lemma)) return meanings.find(meaning => /lieben/i.test(meaning)) || "lieben";
-  return cleanGermanVerb(meanings[0] || firstMeaning(entry));
-}
-
-function germanFiniteVerb(entries, morphology) {
-  const infinitive = chooseGermanVerb(entries);
-  const person = Number(morphology.person);
-  const number = morphology.number;
-  const irregular = {
-    sein: [["bin", "bist", "ist"], ["sind", "seid", "sind"]],
-    haben: [["habe", "hast", "hat"], ["haben", "habt", "haben"]],
-    werden: [["werde", "wirst", "wird"], ["werden", "werdet", "werden"]],
-    wollen: [["will", "willst", "will"], ["wollen", "wollt", "wollen"]],
-    können: [["kann", "kannst", "kann"], ["können", "könnt", "können"]],
-    müssen: [["muss", "musst", "muss"], ["müssen", "müsst", "müssen"]],
-    dürfen: [["darf", "darfst", "darf"], ["dürfen", "dürft", "dürfen"]],
-    sollen: [["soll", "sollst", "soll"], ["sollen", "sollt", "sollen"]],
-    mögen: [["mag", "magst", "mag"], ["mögen", "mögt", "mögen"]],
-    wissen: [["weiß", "weißt", "weiß"], ["wissen", "wisst", "wissen"]]
-  };
-  const forms = irregular[infinitive];
-  if (forms && person >= 1 && person <= 3) return forms[number === "plural" ? 1 : 0][person - 1];
-  if (!/(?:en|n)$/.test(infinitive) || person < 1 || person > 3) return infinitive;
-  const stem = infinitive.endsWith("en") ? infinitive.slice(0, -2) : infinitive.slice(0, -1);
-  const needsExtraE = /[dt]$/.test(stem);
-  const endings = number === "plural"
-    ? ["en", needsExtraE ? "et" : "t", "en"]
-    : ["e", /[sxzß]$/.test(stem) ? "t" : needsExtraE ? "est" : "st", needsExtraE ? "et" : "t"];
-  return stem + endings[person - 1];
-}
-
-function cleanGermanVerb(value) {
-  return String(value)
-    .replace(/^\([^)]*\)\s*/, "")
-    .replace(/^(?:sich|etwas|jdn\.?|jdm\.?)\s+/i, "")
-    .trim();
-}
-
-function repeatedAdverbPhrase(matches) {
-  if (matches.some(match => /iterum.*iterumque/i.test(match.token))) return "immer wieder";
-  if (matches.length < 2) return "";
-  const lemmas = matches.map(match => normalizeLatinWord(match.entries[0]?.lemma || match.entries[0]?.latein).replace(/que$/, ""));
-  return new Set(lemmas).size === 1 && matches.some(match => match.morphology.some(item => item.enclitic === "que")) ? "immer wieder" : "";
-}
-
-function germanNominativePlural(entry) {
-  const phrase = firstMeaning(entry);
-  const noun = phrase.replace(/^(?:der|die|das|ein|eine)\s+/i, "").trim();
-  let plural = noun;
-  if (/e$/i.test(noun)) plural = `${noun}n`;
-  else if (/(?:er|el|en)$/i.test(noun)) plural = noun;
-  else if (/(?:heit|keit|ung|schaft|gefahr)$/i.test(noun)) plural = `${noun}en`;
-  else if (!/n$/i.test(noun)) plural = `${noun}e`;
-  return `die ${plural}`;
-}
-
-function germanNominative(entry, morphology = {}) {
-  if (morphology.number === "plural") return germanNominativePlural(entry);
-  const phrase = firstMeaning(entry);
-  if (/^(?:der|die|das|ein|eine)\s+/i.test(phrase)) return phrase;
-  const noun = phrase.trim();
-  const normalizedNoun = noun.toLocaleLowerCase("de");
-  const lemma = normalizeLatinWord(entry?.lemma || entry?.latein);
-  const article = /(?:chen|lein)$/.test(normalizedNoun) ? "das"
-    : /(?:ung|heit|keit|schaft|tät|ion|ik|ie|anz|enz|ur|ei|in)$/.test(normalizedNoun) || lemma.endsWith("a") ? "die"
-      : "der";
-  return `${article} ${noun}`;
-}
-
-function germanAccusative(entry) {
-  const phrase = firstMeaning(entry);
-  if (/^der\s+/i.test(phrase)) return phrase.replace(/^der\s+/i, "den ");
-  if (/^(?:die|das)\s+/i.test(phrase)) return phrase;
-  const nominative = germanNominative(entry);
-  return nominative.replace(/^der\s+/i, "den ");
-}
-
-function firstMeaning(entry) {
-  return splitMeanings(entry?.deutsch || entry?.meanings?.[0] || "")[0] || "";
-}
-
-function splitMeanings(value) {
-  return String(value).split(/[;,]/).map(item => item.trim()).filter(Boolean);
-}
-
-function capitalize(value) {
-  return value ? value[0].toLocaleUpperCase("de") + value.slice(1) : value;
 }
 
 function addGrammarRule(results, grammarSections, titlePart, reason, useBookRule = true) {
