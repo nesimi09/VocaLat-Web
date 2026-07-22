@@ -9,6 +9,7 @@ import {
   INTERROGATIVE_FORMS,
   KNOWN_GERMAN_NOUNS,
   LATIN_ETHNONYM_LEMMAS,
+  LATIN_IDIOMS,
   LATIN_PREPOSITIONS,
   LATIN_LOCATIVES,
   PERSONAL_PRONOUNS,
@@ -29,6 +30,9 @@ export function generateGermanSentence(semantics, options = {}) {
   if (!semantics?.words?.length) return "";
   const context = { semantics, words: semantics.words, options };
   const construction = type => semantics.constructions?.find(item => item.type === type);
+  const rootStatement = semantics.constructions?.find(item =>
+    ["aci", "nci"].includes(item.type) && isFinite(context.words[item.governingIndex])
+  );
   const leadingCum = inferLeadingCumClauses(context);
 
   let text = "";
@@ -36,13 +40,13 @@ export function generateGermanSentence(semantics, options = {}) {
   else if (semantics.type === "question" && semantics.clauses.length === 1) text = renderPolarQuestion(context);
   else if (construction("indirect-question") || semantics.clauses.some(clause => clause.type === "indirect-question")) text = renderIndirectQuestion(context);
   else if (construction("free-relative")) text = renderFreeRelative(context, construction("free-relative"));
-  else if (construction("aci")) text = renderAci(context, construction("aci"));
-  else if (construction("nci")) text = renderNci(context, construction("nci"));
+  else if (rootStatement?.type === "aci") text = renderAci(context, rootStatement);
+  else if (rootStatement?.type === "nci") text = renderNci(context, rootStatement);
   else if (construction("infinitive-command")) text = renderInfinitiveCommand(context, construction("infinitive-command"));
   else if (construction("gerundive-obligation")) text = renderGerundiveObligation(context, construction("gerundive-obligation"));
   else if (construction("relative-clause")) text = renderRelativeSentence(context, construction("relative-clause"));
   else if (construction("ablative-absolute")) text = renderWithAblativeAbsolute(context, construction("ablative-absolute"));
-  else if (construction("present-participle") || construction("perfect-passive-participle") || construction("participial-phrase")) text = renderParticipialSentence(context, construction("present-participle") || construction("perfect-passive-participle") || construction("participial-phrase"));
+  else if (construction("present-participle") || construction("perfect-passive-participle") || construction("future-participle") || construction("participial-phrase")) text = renderParticipialSentence(context, construction("present-participle") || construction("perfect-passive-participle") || construction("future-participle") || construction("participial-phrase"));
   else if (leadingCum) text = renderLeadingCumComplex(context, leadingCum);
   else if (semantics.clauses.length > 1) text = renderClauseComplex(context);
   else if (semantics.clauses[0]?.type === "prohibition" || context.words[0]?.normalized === "ne") text = renderProhibition(context);
@@ -194,6 +198,7 @@ function renderClause(context, clause, options = {}) {
   if (!finite) return renderEllipticalClause(context, clause, consumed);
   consumed.add(finite.index);
   const idiom = context.semantics.constructions?.find(item => item.type === "idiom" && item.headIndex === finite.index);
+  const idiomFrame = idiom ? LATIN_IDIOMS.find(item => item.id === idiom.id) : null;
   if (idiom) idiom.indexes.forEach(index => consumed.add(index));
 
   const vocativeText = clause.roles.vocative
@@ -212,7 +217,8 @@ function renderClause(context, clause, options = {}) {
     item.type === "infinitive-subject" && item.governingIndex === finite.index && allowed.has(item.infinitiveIndex)
   );
   if (infinitiveSubject) consumed.add(infinitiveSubject.infinitiveIndex);
-  const subjects = clause.roles.subject.filter(index => allowed.has(index) && !consumed.has(index));
+  const subjectRole = idiomFrame?.subjectRole || "subject";
+  const subjects = (clause.roles[subjectRole] || []).filter(index => allowed.has(index) && !consumed.has(index));
   subjects.forEach(index => consumed.add(index));
   const coordinatedSubject = context.semantics.dependencies?.some(dependency =>
     dependency.type === "coordination"
@@ -255,13 +261,14 @@ function renderClause(context, clause, options = {}) {
   const indirect = clause.roles.indirectObject.filter(index => !consumed.has(index)).map(index =>
     germanConstituent(renderNominal(context, index, "dative", consumed), "indirect-object", words[index])
   );
-  const direct = clause.roles.directObject.filter(index => !consumed.has(index) && !comparisonStandards.has(index)).map(index => {
+  const directRole = idiomFrame?.directObjectRole || "directObject";
+  const direct = (clause.roles[directRole] || []).filter(index => !consumed.has(index) && !comparisonStandards.has(index)).map(index => {
     const object = words[index];
     if (VERB_CLASSES.motion.has(finite.lemma) && isProper(object)) {
       return germanConstituent(`nach ${renderNominal(context, index, "nominative", consumed)}`, "direction", object);
     }
-    const germanCase = VERB_FRAMES[finite.lemma]?.germanDirectCase || "accusative";
-    return germanConstituent(renderNominal(context, index, germanCase, consumed), "direct-object", object);
+    const germanCase = idiomFrame?.germanDirectCase || VERB_FRAMES[finite.lemma]?.germanDirectCase || "accusative";
+    return germanConstituent(renderNominal(context, index, germanCase, consumed, { indefinite: Boolean(idiomFrame?.directObjectIndefinite) }), "direct-object", object);
   });
   const frame = VERB_FRAMES[finite.lemma];
   const ablatives = clause.roles.ablative.filter(index => !consumed.has(index) && !comparisonStandards.has(index)).map(index => {
@@ -532,46 +539,151 @@ function renderNonFinitePurpose(context, clause, options, construction) {
 function renderAci(context, construction) {
   const { words } = context;
   const mainClause = context.semantics.clauses.find(clause => clause.tokenIndexes.includes(construction.governingIndex)) || context.semantics.clauses[0];
-  const excluded = dependentExclusionClosure(context, new Set(
-    [construction.subjectIndex, construction.infinitiveIndex, construction.predicateIndex, ...(construction.objectIndexes || [])]
-      .filter(index => index != null)
-  ));
+  const statementTree = statementSubtree(context, construction);
+  const excluded = dependentExclusionClosure(context, new Set(statementTree.flatMap(statementOwnedIndexes)));
+  for (const statement of statementTree) {
+    for (const predicate of statementPredicates(statement)) {
+      for (const complement of embeddedInfinitiveComplements(context, predicate.infinitiveIndex)) {
+        excluded.add(complement.infinitiveIndex);
+        for (const index of complement.objectIndexes || []) excluded.add(index);
+      }
+    }
+  }
   const mainText = renderClause(context, mainClause, { exclude: excluded, narrative: true });
   const mainSubject = mainClause.roles.subject[0] != null ? words[mainClause.roles.subject[0]] : null;
-  const embeddedSubject = ["se", "sese"].includes(words[construction.subjectIndex]?.normalized)
-    ? reflexiveAciSubject(mainSubject)
-    : renderNominal(context, construction.subjectIndex, "nominative", new Set(), { definite: true });
-  const objects = (construction.objectIndexes || []).map(index => renderNominal(context, index, "accusative", new Set()));
-  const predicateNominal = construction.predicateIndex != null
-    ? renderNominal(context, construction.predicateIndex, "nominative", new Set(), { indefinite: true })
-    : "";
-  const infinitive = words[construction.infinitiveIndex];
-  const passiveParticiple = words.find(word => partOf(word) === "ppa" && word.morphology.tense === "perfect" && word.index < infinitive.index && agreementCompatible(word.morphology, words[construction.subjectIndex]?.morphology));
-  let embeddedVerb;
-  if (passiveParticiple && isEsse(infinitive)) {
-    embeddedVerb = `${pastParticiple(germanInfinitive(passiveParticiple))} worden ${infinitive.morphology.tense === "perfect" ? "war" : "ist"}`;
-  } else {
-    embeddedVerb = renderInfinitiveAsFinite(
-      infinitive,
-      { person: 3, number: words[construction.subjectIndex]?.morphology.number || "singular" },
-      words[construction.governingIndex],
-      { subordinate: true }
-    );
-  }
-  return `${mainText}, dass ${[embeddedSubject, ...objects, predicateNominal, embeddedVerb].filter(Boolean).join(" ")}`;
+  return `${mainText}, dass ${renderAciContent(context, construction, mainSubject)}`;
 }
 
 function renderNci(context, construction) {
   const { words } = context;
   const subjectIndex = construction.subjectIndex ?? context.semantics.clauses[0]?.roles.subject[0];
   const subject = subjectIndex != null ? renderNominal(context, subjectIndex, "nominative", new Set()) : "man";
-  const infinitive = words[construction.infinitiveIndex];
-  const objects = context.semantics.clauses.flatMap(clause => clause.roles.directObject).filter(index => index !== subjectIndex).map(index => renderNominal(context, index, "accusative", new Set()));
-  const lexical = germanInfinitive(infinitive);
-  // The reporting modal "sollen" governs a bare infinitive. In the perfect
-  // this becomes an Ersatzinfinitiv group ("erobert haben"), never "zu haben".
-  const complement = infinitive.morphology.tense === "perfect" ? `${pastParticiple(lexical)} haben` : lexical;
-  return [subject, conjugateGerman("sollen", { person: 3, number: words[subjectIndex]?.morphology.number || "singular" }, "present"), ...objects, complement].filter(Boolean).join(" ");
+  const predicates = statementPredicates(construction).map(predicate => renderNciPredicate(context, construction, predicate));
+  const predicateText = joinGerman(predicates, "und");
+  return [
+    subject,
+    conjugateGerman("sollen", { person: 3, number: words[subjectIndex]?.morphology.number || "singular" }, "present"),
+    predicateText
+  ].filter(Boolean).join(" ");
+}
+
+function statementPredicates(construction) {
+  if (construction.predicates?.length) return construction.predicates;
+  return [{
+    infinitiveIndex: construction.infinitiveIndex,
+    predicateIndex: construction.predicateIndex ?? null,
+    objectIndexes: construction.objectIndexes || []
+  }];
+}
+
+function statementOwnedIndexes(construction) {
+  return [
+    construction.subjectIndex,
+    construction.controllerIndex,
+    ...statementPredicates(construction).flatMap(predicate => [
+      predicate.infinitiveIndex,
+      predicate.predicateIndex,
+      ...(predicate.objectIndexes || [])
+    ])
+  ].filter(index => index != null);
+}
+
+function statementSubtree(context, root) {
+  const statements = context.semantics.constructions?.filter(item => ["aci", "nci"].includes(item.type)) || [];
+  const result = [];
+  const visit = construction => {
+    if (!construction || result.includes(construction)) return;
+    result.push(construction);
+    const predicates = new Set(statementPredicates(construction).map(predicate => predicate.infinitiveIndex));
+    statements.filter(item => predicates.has(item.governingIndex)).forEach(visit);
+  };
+  visit(root);
+  return result;
+}
+
+function embeddedInfinitiveComplements(context, governingIndex) {
+  return context.semantics.constructions?.filter(item =>
+    item.type === "complementary-infinitive" && item.governingIndex === governingIndex
+  ) || [];
+}
+
+function renderAciContent(context, construction, controllingSubject = null) {
+  const { words } = context;
+  const subjectWord = words[construction.subjectIndex];
+  const subject = ["se", "sese"].includes(subjectWord?.normalized)
+    ? reflexiveAciSubject(controllingSubject)
+    : construction.subjectIndex != null
+      ? renderNominal(context, construction.subjectIndex, "nominative", new Set(), { definite: true })
+      : "man";
+  const predicates = statementPredicates(construction).map(predicate =>
+    renderAciPredicate(context, construction, predicate, subjectWord)
+  );
+  return [subject, joinGerman(predicates, "und")].filter(Boolean).join(" ");
+}
+
+function renderAciPredicate(context, construction, predicate, subjectWord) {
+  const { words } = context;
+  const infinitive = words[predicate.infinitiveIndex];
+  if (!infinitive) return "";
+  const objects = (predicate.objectIndexes || []).map(index =>
+    renderNominal(context, index, "accusative", new Set())
+  );
+  const predicateNominal = predicate.predicateIndex != null
+    ? renderNominal(context, predicate.predicateIndex, "nominative", new Set(), { indefinite: true })
+    : "";
+  const agreement = { person: 3, number: subjectWord?.morphology.number || "singular" };
+  const embeddedVerb = renderAciPredicateVerb(context, construction, predicate, agreement);
+  const complements = embeddedInfinitiveComplements(context, predicate.infinitiveIndex).map(item =>
+    renderGermanInfinitiveGroup(words[item.infinitiveIndex], { withZu: item.withZu })
+  );
+  const child = context.semantics.constructions?.find(item =>
+    item.type === "aci" && item.governingIndex === predicate.infinitiveIndex
+  );
+  const local = [...objects, predicateNominal, ...complements, embeddedVerb].filter(Boolean).join(" ");
+  return child ? `${local}, dass ${renderAciContent(context, child, subjectWord)}` : local;
+}
+
+function renderAciPredicateVerb(context, construction, predicate, agreement) {
+  const { words } = context;
+  const infinitive = words[predicate.infinitiveIndex];
+  const subjectWord = words[construction.subjectIndex];
+  const passiveParticiple = words.find(word =>
+    partOf(word) === "ppa"
+    && word.morphology.tense === "perfect"
+    && Math.abs(word.index - infinitive.index) <= 5
+    && agreementCompatible(word.morphology, subjectWord?.morphology)
+  );
+  if (passiveParticiple && isEsse(infinitive)) {
+    const lexical = germanInfinitive(passiveParticiple);
+    const auxiliary = isLexicallyActiveParticiple(passiveParticiple)
+      ? conjugateGerman(movementVerb(lexical) ? "sein" : "haben", agreement, "present")
+      : `${pastParticiple(lexical)} worden ${conjugateGerman("sein", agreement, "present")}`;
+    return isLexicallyActiveParticiple(passiveParticiple)
+      ? `${pastParticiple(lexical)} ${auxiliary}`
+      : auxiliary;
+  }
+  return renderInfinitiveAsFinite(
+    infinitive,
+    agreement,
+    words[construction.governingIndex],
+    { subordinate: true }
+  );
+}
+
+function renderNciPredicate(context, construction, predicate) {
+  const { words } = context;
+  const infinitive = words[predicate.infinitiveIndex];
+  if (!infinitive) return "";
+  const objects = (predicate.objectIndexes || []).map(index =>
+    renderNominal(context, index, "accusative", new Set())
+  );
+  const child = context.semantics.constructions?.find(item =>
+    item.type === "aci" && item.governingIndex === predicate.infinitiveIndex
+  );
+  const complement = renderGermanInfinitiveGroup(infinitive);
+  const local = [...objects, complement].filter(Boolean).join(" ");
+  const subjectWord = words[construction.subjectIndex];
+  return child ? `${local}, dass ${renderAciContent(context, child, subjectWord)}` : local;
 }
 
 function renderInfinitiveCommand(context, construction) {
@@ -605,6 +717,7 @@ function renderGerundiveObligation(context, construction) {
 }
 
 function renderWithAblativeAbsolute(context, construction) {
+  if (construction.nominal) return renderNominalAblativeAbsolute(context, construction);
   const { words } = context;
   const subject = renderNominal(context, construction.subjectIndex, "nominative", new Set());
   const participle = words[construction.participleIndex];
@@ -613,6 +726,7 @@ function renderWithAblativeAbsolute(context, construction) {
   const complement = findParticipleInfinitiveComplement(context, construction);
   const internalIndexes = ablativeAbsoluteIndexes(context, construction, complement);
   const adverbs = renderAdverbials(context, [...internalIndexes].filter(index => isAdverb(words[index])), new Set());
+  const complements = renderParticipleComplements(context, construction, internalIndexes, new Set(complement?.argumentIndexes || []));
   let predicate;
   if (construction.temporalRelation === "anterior") {
     const passive = participle.morphology.voice === "passive" && !isLexicallyActiveParticiple(participle);
@@ -621,6 +735,8 @@ function renderWithAblativeAbsolute(context, construction) {
       const auxiliary = movementVerb(lexical) || lexical === "sein" ? "sein" : "haben";
       predicate = `${pastParticiple(lexical)} ${conjugateGerman(auxiliary, agreement, "imperfect")}`;
     }
+  } else if (construction.temporalRelation === "prospective") {
+    predicate = `${lexical} ${conjugateGerman("wollen", agreement, "imperfect")}`;
   } else if (complement) {
     const argumentsText = renderInfinitiveArguments(context, complement, internalIndexes);
     const governing = preferredGermanController(participle);
@@ -628,11 +744,37 @@ function renderWithAblativeAbsolute(context, construction) {
     const infinitivePhrase = isGermanModal(governing) ? infinitive : germanZuInfinitive(infinitive);
     predicate = [argumentsText, infinitivePhrase, conjugateGerman(governing || lexical, agreement, "present")].filter(Boolean).join(" ");
   } else {
-    predicate = conjugateGerman(lexical, agreement, "present");
+    predicate = subordinateFinitePhrase(conjugateGerman(lexical, agreement, "present"));
   }
-  const subordinate = `${construction.temporalRelation === "anterior" ? "Nachdem" : "Während"} ${subject} ${[...adverbs, predicate].filter(Boolean).join(" ")}`.replace(/\s+/g, " ");
+  const connector = construction.relation === "concessive"
+    ? "Obwohl"
+    : construction.relation === "causal"
+      ? "Weil"
+      : construction.temporalRelation === "anterior"
+        ? "Nachdem"
+        : construction.temporalRelation === "prospective" ? "Als" : "Während";
+  const subordinate = `${connector} ${subject} ${[...adverbs, complements.text, predicate].filter(Boolean).join(" ")}`.replace(/\s+/g, " ");
   const excluded = internalIndexes;
-  const main = context.semantics.clauses.find(clause => clause.roles.subject.some(index => !excluded.has(index)) && clause.headIndex != null && isFinite(words[clause.headIndex]));
+  const main = context.semantics.clauses.find(clause => clause.headIndex != null && !excluded.has(clause.headIndex) && isFinite(words[clause.headIndex]));
+  if (!main) return subordinate;
+  const mainText = renderClause(context, main, { inverted: true, exclude: excluded, narrative: true });
+  return `${subordinate}, ${lowerFirst(mainText)}`;
+}
+
+function renderNominalAblativeAbsolute(context, construction) {
+  const { words } = context;
+  const excluded = new Set(construction.internalIndexes || [construction.subjectIndex, construction.predicateNominalIndex]);
+  const main = context.semantics.clauses.find(clause =>
+    clause.headIndex != null && !excluded.has(clause.headIndex) && isFinite(words[clause.headIndex])
+  );
+  const mainTense = words[main?.headIndex]?.morphology?.tense;
+  const historical = ["imperfect", "perfect", "pluperfect"].includes(mainTense);
+  const subject = renderNominal(context, construction.subjectIndex, "nominative", new Set(), { definite: true });
+  const predicate = renderNominal(context, construction.predicateNominalIndex, "nominative", new Set(), { articleless: true });
+  const agreement = { person: 3, number: words[construction.subjectIndex]?.morphology?.number || "singular" };
+  const connector = construction.relation === "concessive" ? "Obwohl"
+    : construction.relation === "causal" ? "Weil" : historical || !main ? "Als" : "Während";
+  const subordinate = `${connector} ${subject} ${predicate} ${conjugateGerman("sein", agreement, historical || !main ? "imperfect" : "present")}`.replace(/\s+/g, " ");
   if (!main) return subordinate;
   const mainText = renderClause(context, main, { inverted: true, exclude: excluded, narrative: true });
   return `${subordinate}, ${lowerFirst(mainText)}`;
@@ -659,7 +801,7 @@ function findParticipleInfinitiveComplement(context, construction) {
 }
 
 function ablativeAbsoluteIndexes(context, construction, complement) {
-  const indexes = new Set([construction.subjectIndex, construction.participleIndex]);
+  const indexes = new Set(construction.internalIndexes || [construction.subjectIndex, construction.participleIndex]);
   const lower = Math.min(construction.subjectIndex, construction.participleIndex);
   const upper = Math.max(construction.subjectIndex, construction.participleIndex);
   for (const word of context.words) {
@@ -670,6 +812,31 @@ function ablativeAbsoluteIndexes(context, construction, complement) {
     complement.argumentIndexes.forEach(index => indexes.add(index));
   }
   return indexes;
+}
+
+function renderParticipleComplements(context, construction, internalIndexes, excludedIndexes = new Set()) {
+  const consumed = new Set([construction.subjectIndex, construction.antecedentIndex, construction.participleIndex, ...excludedIndexes].filter(index => index != null));
+  const prepositions = context.semantics.clauses
+    .flatMap(clause => clause.roles.prepositional || [])
+    .filter(item => internalIndexes.has(item.prepositionIndex) && internalIndexes.has(item.objectIndex) && !excludedIndexes.has(item.objectIndex));
+  const prepositionObjects = new Set(prepositions.map(item => item.objectIndex));
+  const entries = prepositions.map(item => {
+    consumed.add(item.prepositionIndex);
+    const nominal = renderNominal(context, item.objectIndex, item.germanCase || "dative", consumed);
+    return { index: item.prepositionIndex, text: contractPreposition(`${item.german} ${nominal}`) };
+  });
+  for (const index of construction.argumentIndexes || []) {
+    if (!internalIndexes.has(index) || prepositionObjects.has(index) || excludedIndexes.has(index) || consumed.has(index)) continue;
+    const word = context.words[index];
+    const grammaticalCase = caseIncludes(word.morphology, "dative") ? "dative"
+      : caseIncludes(word.morphology, "genitive") ? "genitive"
+        : "accusative";
+    entries.push({ index, text: renderNominal(context, index, grammaticalCase, consumed) });
+  }
+  return {
+    indexes: new Set(entries.map(item => item.index)),
+    text: entries.sort((left, right) => left.index - right.index).map(item => item.text).filter(Boolean).join(" ")
+  };
 }
 
 function renderInfinitiveArguments(context, complement) {
@@ -726,7 +893,14 @@ function renderGermanInfinitiveGroup(word, options = {}) {
 }
 
 function isLexicallyActiveParticiple(word) {
-  return Boolean(word?.morphology?.deponent || word?.morphology?.semideponent || word?.morphology?.lexicalVoice === "deponent" || word?.morphology?.verbClass === "deponent");
+  return Boolean(
+    word?.morphology?.deponent
+    || word?.morphology?.semideponent
+    || word?.morphology?.lexicalVoice === "deponent"
+    || word?.morphology?.verbClass === "deponent"
+    || VERB_FRAMES[word?.lemma]?.deponent
+    || VERB_FRAMES[word?.lemma]?.semideponent
+  );
 }
 
 function renderParticipialSentence(context, construction) {
@@ -734,29 +908,54 @@ function renderParticipialSentence(context, construction) {
   const clause = context.semantics.clauses.find(item => item.tokenIndexes.includes(construction.participleIndex)) || context.semantics.clauses[0];
   const antecedentIndex = construction.antecedentIndex ?? clause.roles.subject[0];
   if (antecedentIndex == null) return renderClause(context, clause, {});
-  const subject = renderNominal(context, antecedentIndex, "nominative", new Set());
   const participle = words[construction.participleIndex];
+  if (canRenderAttributiveParticiple(context, clause, construction, participle, antecedentIndex)) {
+    const attribute = participle.morphology.tense === "present"
+      ? germanPresentParticiple(germanInfinitive(participle))
+      : pastParticiple(germanInfinitive(participle));
+    const subject = renderNominal(context, antecedentIndex, "nominative", new Set(), { participleAttributes: [attribute] });
+    const excluded = new Set([antecedentIndex, construction.participleIndex]);
+    const mainText = renderClause(context, clause, { exclude: excluded, omitSubject: true });
+    return `${subject} ${lowerFirst(mainText)}`;
+  }
+  const subject = renderNominal(context, antecedentIndex, "nominative", new Set());
   const agreement = { person: 3, number: words[antecedentIndex].morphology.number || "singular" };
   const complement = findParticipleInfinitiveComplement(context, construction);
-  const complementArgumentsSet = new Set(complement?.argumentIndexes || []);
-  const participleObjects = clause.roles.directObject.filter(index => index !== antecedentIndex && !complementArgumentsSet.has(index) && Math.abs(index - participle.index) <= 3);
-  const objectText = participleObjects.map(index => renderNominal(context, index, "accusative", new Set())).join(" ");
-  const relatedPrepositions = clause.roles.prepositional.filter(item => item.prepositionIndex < participle.index && participle.index - item.objectIndex <= 2);
-  const prepositionalText = relatedPrepositions.map(item => contractPreposition(`${item.german} ${renderNominal(context, item.objectIndex, item.germanCase, new Set())}`));
+  const internalIndexes = new Set(construction.internalIndexes || [antecedentIndex, construction.participleIndex]);
+  const complements = renderParticipleComplements(context, construction, internalIndexes, new Set(complement?.argumentIndexes || []));
   const complementArguments = complement ? renderInfinitiveArguments(context, complement, new Set(clause.tokenIndexes)) : "";
   const participleController = preferredGermanController(participle);
   const participleVerb = complement
-    ? [complementArguments, isGermanModal(participleController) ? germanInfinitive(complement.infinitive) : germanZuInfinitive(germanInfinitive(complement.infinitive)), conjugateGerman(participleController, agreement, "present")].filter(Boolean).join(" ")
-    : participle.morphology.tense === "perfect" && participle.morphology.voice === "passive"
+    ? [complementArguments, isGermanModal(participleController) ? germanInfinitive(complement.infinitive) : germanZuInfinitive(germanInfinitive(complement.infinitive)), subordinateFinitePhrase(conjugateGerman(participleController, agreement, "present"))].filter(Boolean).join(" ")
+    : participle.morphology.tense === "future" && participle.morphology.voice === "active"
+      ? `${germanInfinitive(participle)} ${conjugateGerman("werden", agreement, "present")}`
+    : participle.morphology.tense === "perfect" && participle.morphology.voice === "passive" && !isLexicallyActiveParticiple(participle)
     ? `${pastParticiple(germanInfinitive(participle))} wurde`
     : participle.morphology.tense === "perfect"
-      ? `${pastParticiple(germanInfinitive(participle))} hat`
-    : conjugateGerman(germanInfinitive(participle), agreement, "present");
+      ? `${pastParticiple(germanInfinitive(participle))} ${conjugateGerman(movementVerb(germanInfinitive(participle)) || germanInfinitive(participle) === "sein" ? "sein" : "haben", agreement, "present")}`
+    : subordinateFinitePhrase(conjugateGerman(germanInfinitive(participle), agreement, "present"));
   const relativePronoun = relativePronounFor(words[antecedentIndex], "nominative");
-  const relative = `${relativePronoun} ${[...prepositionalText, objectText, participleVerb].filter(Boolean).join(" ")}`;
-  const excluded = new Set([antecedentIndex, construction.participleIndex, ...participleObjects, ...relatedPrepositions.flatMap(item => [item.prepositionIndex, item.objectIndex]), ...(complement ? [complement.infinitive.index, ...complement.argumentIndexes] : [])]);
+  const relative = `${relativePronoun} ${[complements.text, participleVerb].filter(Boolean).join(" ")}`;
+  const excluded = new Set([...internalIndexes, ...(complement ? [complement.infinitive.index, ...complement.argumentIndexes] : [])]);
   const mainText = renderClause(context, clause, { exclude: excluded, omitSubject: true });
   return `${subject}, ${relative}, ${lowerFirst(mainText)}`;
+}
+
+function canRenderAttributiveParticiple(context, clause, construction, participle, antecedentIndex) {
+  if (!clause.roles.subject.includes(antecedentIndex) || isProper(context.words[antecedentIndex])) return false;
+  if (participle.morphology.tense === "future" || germanInfinitive(participle).startsWith("sich ")) return false;
+  if ((construction.argumentIndexes || []).length || findParticipleInfinitiveComplement(context, construction)) return false;
+  const internal = new Set(construction.internalIndexes || [antecedentIndex, construction.participleIndex]);
+  return ![...internal].some(index => index !== antecedentIndex && index !== construction.participleIndex && (
+    isAdverb(context.words[index])
+    || clause.roles.prepositional.some(item => item.prepositionIndex === index || item.objectIndex === index)
+  ));
+}
+
+function germanPresentParticiple(infinitive) {
+  if (infinitive === "sein") return "seiend";
+  if (infinitive === "tun") return "tuend";
+  return `${infinitive}d`;
 }
 
 function renderRelativeSentence(context, construction) {
@@ -994,7 +1193,7 @@ function renderNominal(context, index, grammaticalCase, consumed = new Set(), op
     noun = declineGermanNoun(noun, grammaticalCase, gender);
   }
   const adjectiveDeclension = modifierDeclensionClass(orderedModifiers, context.words, article);
-  const adjectiveText = orderedModifiers.map(modifierIndex => {
+  const adjectiveText = [...orderedModifiers.map(modifierIndex => {
     if (gerundiveModifiers.includes(modifierIndex)) {
       return inflectAdjective(attributiveGerundiveStem(context.words[modifierIndex]), grammaticalCase, gender, number, adjectiveDeclension);
     }
@@ -1004,7 +1203,7 @@ function renderNominal(context, index, grammaticalCase, consumed = new Set(), op
     if (POSSESSIVE_STEMS[modifier.lemma]) return inflectPossessive(POSSESSIVE_STEMS[modifier.lemma], grammaticalCase, gender, number);
     const stem = ["omnis", "totus"].includes(modifier.lemma) ? "ganz" : germanAdjectiveDegree(modifier);
     return inflectAdjective(stem, grammaticalCase, gender, number, adjectiveDeclension);
-  }).join(" ");
+  }), ...(options.participleAttributes || []).map(attribute => inflectAdjective(attribute, grammaticalCase, gender, number, adjectiveDeclension, { preserveStem: true }))].filter(Boolean).join(" ");
   return withDependentGenitives([article, adjectiveText, noun].filter(Boolean).join(" "));
 }
 
@@ -1199,8 +1398,12 @@ function renderPerfectPassiveVerb(context, participle, auxiliary, agreement) {
 
 function renderInfinitiveAsFinite(infinitive, agreement, governing, options = {}) {
   const lexical = germanInfinitive(infinitive);
+  const deponent = infinitive.morphology?.deponent
+    || infinitive.morphology?.semideponent
+    || infinitive.morphology?.verbClass === "deponent"
+    || infinitive.morphology?.lexicalVoice === "deponent";
   let finitePhrase;
-  if (infinitive.morphology.voice === "passive") {
+  if (infinitive.morphology.voice === "passive" && !deponent) {
     if (infinitive.morphology.tense === "perfect") {
       const tense = ["perfect", "imperfect", "pluperfect"].includes(governing?.morphology?.tense) ? "imperfect" : "present";
       finitePhrase = `${conjugateGerman("sein", agreement, tense)} ${pastParticiple(lexical)} worden`;
@@ -1285,10 +1488,13 @@ export function conjugateGerman(infinitive, agreement = {}, tense = "present") {
       form = stem + suffix;
     } else {
       const needsE = /[dt]$/.test(stem);
-      const endings = plural
-        ? ["en", needsE ? "et" : "t", "en"]
-        : ["e", /[sxzß]$/.test(stem) ? "t" : needsE ? "est" : "st", needsE ? "et" : "t"];
-      form = stem + endings[person - 1];
+      if (plural && person !== 2) form = core;
+      else {
+        const endings = plural
+          ? ["en", needsE ? "et" : "t", "en"]
+          : ["e", /[sxzß]$/.test(stem) ? "t" : needsE ? "est" : "st", needsE ? "et" : "t"];
+        form = stem + endings[person - 1];
+      }
     }
   }
   const pronoun = reflexive ? ({ 1: plural ? "uns" : "mich", 2: plural ? "euch" : "dich", 3: "sich" })[person] : "";
@@ -1550,8 +1756,8 @@ function inflectPossessive(stem, grammaticalCase, gender, number) {
   return `${stem}${endings[grammaticalCase]?.[gender] || ""}`;
 }
 
-function inflectAdjective(value, grammaticalCase, gender, number, declensionClass = "strong") {
-  const stem = adjectiveStem(value);
+function inflectAdjective(value, grammaticalCase, gender, number, declensionClass = "strong", options = {}) {
+  const stem = options.preserveStem ? String(value || "").trim() : adjectiveStem(value);
   if (!stem) return "";
   const grammaticalNumber = number === "plural" || gender === "plural" ? "plural" : "singular";
   const normalizedGender = grammaticalNumber === "plural" ? "plural" : gender || "m";

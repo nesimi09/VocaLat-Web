@@ -23,6 +23,8 @@ Nach der Bildauswahl startet die Verarbeitung automatisch. Auf gemischten Arbeit
 
 Der Übersetzer speichert keine fertigen Übersetzungen bekannter Sätze. Jedes Eingabewort behält zunächst seine möglichen Formen und Bedeutungen. Danach bestimmt der Parser Satzgrenzen, Satzglieder, Kongruenzen und Konstruktionen wie AcI, NcI, Ablativus absolutus, Partizipien, Gerundiv sowie wichtige Neben- und Relativsätze. Erst auf dieser Grundlage wird eine Bedeutung gewählt und ein deutscher Satz erzeugt. Buchvokabeln erhalten bei einer grammatisch passenden Analyse Vorrang; für fehlende Lemmata steht das lokal mitgelieferte FreeDict-Wörterbuch mit 5.484 Einträgen bereit.
 
+Die Module, Bewertungsdaten und Erweiterungsregeln sind in der [Übersetzungsarchitektur](docs/translation-architecture.md) beschrieben.
+
 Die Übersetzungstests verwenden einen getrennten Holdout-Korpus mit künstlich zusammengestellten Sätzen. Er enthält keine vollständigen deutschen Musterübersetzungen. Geprüft werden stattdessen Satzglieder, erkannte Konstruktionen, notwendige Bedeutungsbestandteile, Abdeckung und die Unabhängigkeit von der lateinischen Wortstellung. Die OCR-Regressionstests prüfen davon getrennt die Extraktion aus unterschiedlich aufgebauten Arbeitsblättern.
 
 ## Geführter Kurs und Kurs-Pass

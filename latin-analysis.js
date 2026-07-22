@@ -19,6 +19,7 @@ import {
   VERB_CLASSES,
   VERB_FRAMES
 } from "./latin-language-data.js";
+import { buildLatinSyntaxTree } from "./latin-syntax-tree.js";
 
 const FINITE_MOODS = new Set(["indicative", "subjunctive", "imperative"]);
 const NOMINAL_PARTS = new Set(["n", "pron", "proper", "adj", "num"]);
@@ -838,7 +839,7 @@ export function parseLatinSyntax(input = [], options = {}) {
     clause.dependencies.push(dependency("antecedent", clause.markerIndex, clause.antecedentIndex, words));
   }
   const dependencies = clauses.flatMap(clause => clause.dependencies || []);
-  return {
+  const parse = {
     type: options.source?.trim().endsWith("?") ? "question" : "sentence",
     source: options.source || words.map(word => word.raw).join(" "),
     words,
@@ -846,6 +847,7 @@ export function parseLatinSyntax(input = [], options = {}) {
     dependencies,
     rootClauseId: clauses.find(clause => clause.type === "main")?.id || clauses[0]?.id || null
   };
+  return { ...parse, tree: buildLatinSyntaxTree(parse) };
 }
 
 function segmentClauses(words, finiteIndexes, options) {
@@ -1281,9 +1283,66 @@ export function interpretLatinGrammar(parse, options = {}) {
   for (const participle of participles.filter(word => !consumedParticiples.has(word.index) && caseIncludes(word.morphology, "ablative"))) {
     const nounIndex = nearestAgreeingNominal(words, range(0, words.length - 1), participle.index, { case: "ablative", exclude: prepositionObjects });
     if (nounIndex == null || prepositionObjects.has(nounIndex)) continue;
-    const construction = { type: "ablative-absolute", participleIndex: participle.index, subjectIndex: nounIndex, temporalRelation: participle.morphology.tense === "perfect" ? "anterior" : "simultaneous" };
+    const internalIndexes = participleInternalIndexes(result, nounIndex, participle.index);
+    const construction = {
+      type: "ablative-absolute",
+      participleIndex: participle.index,
+      subjectIndex: nounIndex,
+      relation: ablativeAbsoluteRelation(words),
+      temporalRelation: participle.morphology.tense === "perfect"
+        ? "anterior"
+        : participle.morphology.tense === "future" && participle.morphology.voice === "active"
+          ? "prospective"
+          : "simultaneous",
+      internalIndexes: [...internalIndexes].sort((left, right) => left - right),
+      argumentIndexes: participleArgumentIndexes(words, internalIndexes, nounIndex, participle.index)
+    };
     result.constructions.push(construction);
     consumedParticiples.add(participle.index);
+  }
+
+  /*
+   * Classical Latin may omit the present participle of esse in an ablative
+   * absolute (Caesare duce).  Recognize the productive nominal pattern only
+   * when an ungoverned proper/animate nominal is paired with a common nominal
+   * of the same number.  This keeps ordinary instrumental ablatives out.
+   */
+  const occupiedAblativeIndexes = new Set(result.constructions
+    .filter(construction => construction.type === "ablative-absolute")
+    .flatMap(construction => [construction.subjectIndex, construction.participleIndex]));
+  for (const clause of result.clauses) {
+    const candidates = (clause.tokenIndexes || [])
+      .map(index => words[index])
+      .filter(word => isNominal(word)
+        && caseIncludes(word.morphology, "ablative")
+        && !prepositionObjects.has(word.index)
+        && !occupiedAblativeIndexes.has(word.index));
+    const subjects = candidates.filter(word => isProper(word) || ANIMATE_LEMMAS.has(word.lemma));
+    for (const subject of subjects) {
+      const predicate = candidates.find(word =>
+        word.index !== subject.index
+        && !isProper(word)
+        && numberAgrees(word.morphology, subject.morphology)
+        && Math.abs(word.index - subject.index) <= 3
+        && !hasClauseBoundaryBetween(words, Math.min(word.index, subject.index), Math.max(word.index, subject.index))
+      );
+      if (!predicate) continue;
+      const internalIndexes = [subject.index, predicate.index].sort((left, right) => left - right);
+      result.constructions.push({
+        type: "ablative-absolute",
+        nominal: true,
+        subjectIndex: subject.index,
+        predicateNominalIndex: predicate.index,
+        participleIndex: null,
+        relation: ablativeAbsoluteRelation(words, new Set(internalIndexes)),
+        temporalRelation: "simultaneous",
+        internalIndexes,
+        argumentIndexes: []
+      });
+      occupiedAblativeIndexes.add(subject.index);
+      occupiedAblativeIndexes.add(predicate.index);
+      break;
+    }
   }
 
   for (const participle of participles.filter(word => !consumedParticiples.has(word.index))) {
@@ -1292,9 +1351,9 @@ export function interpretLatinGrammar(parse, options = {}) {
       consumedParticiples.add(participle.index);
       continue;
     }
-    const antecedentIndex = nearestAgreeingNominal(words, range(0, words.length - 1), participle.index);
+    const clause = result.clauses.find(item => item.tokenIndexes.includes(participle.index)) || result.clauses[0];
+    const antecedentIndex = nearestAgreeingNominal(words, clause?.tokenIndexes || allIndexes, participle.index);
     if (antecedentIndex == null && ["nominative", "accusative"].some(value => caseIncludes(participle.morphology, value))) {
-      const clause = result.clauses.find(item => item.tokenIndexes.includes(participle.index)) || result.clauses[0];
       const grammaticalCase = clause?.roles.subject.length && clause.headIndex != null && !isEsse(words[clause.headIndex]) ? "accusative" : "nominative";
       const contextual = participleReadingForCase(participle, grammaticalCase);
       if (contextual) words[participle.index] = contextual;
@@ -1302,7 +1361,23 @@ export function interpretLatinGrammar(parse, options = {}) {
       consumedParticiples.add(participle.index);
       continue;
     }
-    result.constructions.push({ type: participle.morphology.tense === "present" ? "present-participle" : participle.morphology.tense === "perfect" && participle.morphology.voice === "passive" ? "perfect-passive-participle" : "participial-phrase", participleIndex: participle.index, antecedentIndex });
+    const internalIndexes = antecedentIndex == null
+      ? new Set([participle.index])
+      : participleInternalIndexes(result, antecedentIndex, participle.index);
+    const type = participle.morphology.tense === "present"
+      ? "present-participle"
+      : participle.morphology.tense === "future" && participle.morphology.voice === "active"
+        ? "future-participle"
+        : participle.morphology.tense === "perfect" && participle.morphology.voice === "passive" && !participleIsLexicallyActive(participle)
+          ? "perfect-passive-participle"
+          : "participial-phrase";
+    result.constructions.push({
+      type,
+      participleIndex: participle.index,
+      antecedentIndex,
+      internalIndexes: [...internalIndexes].sort((left, right) => left - right),
+      argumentIndexes: participleArgumentIndexes(words, internalIndexes, antecedentIndex, participle.index)
+    });
   }
 
   /*
@@ -1330,9 +1405,42 @@ export function interpretLatinGrammar(parse, options = {}) {
   }
 
   for (const infinitive of infinitives) {
-    const governing = nearestGoverningFinite(words, infinitive.index);
+    const governing = nearestGoverningPredicate(words, infinitive.index);
     if (!governing) continue;
     if (isEsse(governing)) {
+      const passiveStatementController = words.find(word =>
+        partOf(word) === "ppa"
+        && word.morphology?.tense === "perfect"
+        && word.morphology?.voice === "passive"
+        && Math.abs(word.index - governing.index) <= 4
+        && allowsAci(word)
+        && !word.morphology?.deponent
+        && !word.morphology?.semideponent
+        && !VERB_FRAMES[word.lemma]?.deponent
+        && !VERB_FRAMES[word.lemma]?.semideponent
+      );
+      if (passiveStatementController) {
+        const subject = words.find(word =>
+          word.index !== governing.index
+          && word.index !== passiveStatementController.index
+          && caseIncludes(word.morphology, "nominative")
+        );
+        const objects = words
+          .filter(word => ![infinitive.index, governing.index, passiveStatementController.index, subject?.index].includes(word.index) && !prepositionObjects.has(word.index))
+          .map(word => readingForCase(word, "accusative"))
+          .filter(Boolean);
+        commitContextualReadings(words, objects);
+        result.constructions.push({
+          type: "nci",
+          governingIndex: governing.index,
+          controllerIndex: passiveStatementController.index,
+          infinitiveIndex: infinitive.index,
+          subjectIndex: subject?.index ?? null,
+          subject: subject || null,
+          objectIndexes: objects.map(word => word.index)
+        });
+        continue;
+      }
       const activePerfectController = words.find(word =>
         partOf(word) === "ppa"
         && word.morphology?.tense === "perfect"
@@ -1365,10 +1473,14 @@ export function interpretLatinGrammar(parse, options = {}) {
       result.constructions.push({ type: "infinitive-subject", governingIndex: governing.index, infinitiveIndex: infinitive.index });
       continue;
     }
-    const accusatives = words
+    const allAccusatives = words
       .filter(word => word.index !== infinitive.index && word.index !== governing.index && !prepositionObjects.has(word.index))
       .map(word => readingForCase(word, "accusative"))
       .filter(Boolean);
+    const followingAccusatives = governing.morphology?.mood === "infinitive"
+      ? allAccusatives.filter(word => word.index > governing.index)
+      : [];
+    const accusatives = followingAccusatives.length ? followingAccusatives : allAccusatives;
     if (VERB_CLASSES.command.has(governing.lemma) && accusatives.length) {
       const commanded = accusatives.find(word => ANIMATE_LEMMAS.has(word.lemma)) || accusatives[0];
       const objects = accusatives.filter(word => word.index !== commanded.index);
@@ -1376,13 +1488,22 @@ export function interpretLatinGrammar(parse, options = {}) {
       result.constructions.push({ type: "infinitive-command", governingIndex: governing.index, infinitiveIndex: infinitive.index, subjectIndex: commanded.index, subject: commanded, objectIndexes: objects.map(word => word.index) });
       continue;
     }
-    if ((governing.morphology.voice === "passive" || hasPerfectPassiveAt(words, governing.index)) && VERB_CLASSES.speechThought.has(governing.lemma)) {
+    if (isFinite(governing) && (governing.morphology.voice === "passive" || hasPerfectPassiveAt(words, governing.index)) && allowsAci(governing)) {
       const subject = words.find(word => caseIncludes(word.morphology, "nominative") && word.index !== governing.index);
-      result.constructions.push({ type: "nci", governingIndex: governing.index, infinitiveIndex: infinitive.index, subjectIndex: subject?.index ?? null, subject: subject || null });
+      commitContextualReadings(words, accusatives);
+      result.constructions.push({
+        type: "nci",
+        governingIndex: governing.index,
+        infinitiveIndex: infinitive.index,
+        subjectIndex: subject?.index ?? null,
+        subject: subject || null,
+        objectIndexes: accusatives.map(word => word.index)
+      });
       continue;
     }
-    if (VERB_CLASSES.speechThought.has(governing.lemma) && accusatives.length) {
-      const subject = chooseAciSubject(accusatives, infinitive, governing);
+    if (allowsAci(governing) && accusatives.length) {
+      const inheritedSubject = coordinatedAciSubject(result.constructions, words, governing, infinitive, accusatives);
+      const subject = inheritedSubject || chooseAciSubject(accusatives, infinitive, governing);
       const complements = accusatives.filter(word => word.index !== subject.index);
       const predicate = isEsse(infinitive)
         ? complements.find(word => agreementScore(word.morphology, subject.morphology) >= 1) || complements[0] || null
@@ -1408,6 +1529,8 @@ export function interpretLatinGrammar(parse, options = {}) {
       withZu: Boolean(VERB_FRAMES[governing.lemma]?.germanInfinitiveWithZu)
     });
   }
+
+  normalizeStatementInfinitives(result, words);
 
   for (const clause of result.clauses) {
     const marker = clause.marker;
@@ -1870,6 +1993,25 @@ function isRelativeMarker(words, index) {
   return true;
 }
 
+function allowsAci(word) {
+  return Boolean(word && (VERB_CLASSES.speechThought.has(word.lemma) || VERB_FRAMES[word.lemma]?.allowsAci));
+}
+
+function canGovernInfinitive(word) {
+  if (!word || word.morphology?.mood !== "infinitive") return false;
+  return allowsAci(word)
+    || VERB_CLASSES.command.has(word.lemma)
+    || VERB_CLASSES.modal.has(word.lemma)
+    || Boolean(VERB_FRAMES[word.lemma]?.allowsInfinitive);
+}
+
+function nearestGoverningPredicate(words, infinitiveIndex) {
+  const infinitiveController = words
+    .filter(word => word.index < infinitiveIndex && canGovernInfinitive(word))
+    .sort((left, right) => right.index - left.index)[0];
+  return infinitiveController || nearestGoverningFinite(words, infinitiveIndex);
+}
+
 function nearestGoverningFinite(words, infinitiveIndex) {
   const finite = words.filter(isFinite);
   const before = finite.filter(word => word.index < infinitiveIndex).sort((left, right) => right.index - left.index);
@@ -1886,13 +2028,161 @@ function chooseAciSubject(accusatives, infinitive, governing) {
       if (partOf(word) === "pron") value += 8;
       if (isProper(word) && word.morphology?.gender !== "n") value += 4;
       if (word.morphology?.gender === "n") value -= 2;
-      // Position is only a final tie-breaker; semantic and grammatical
-      // evidence remain stronger than Latin word order.
-      value -= Math.max(0, word.index - governing.index) * .01;
+      // Distance resolves otherwise equal candidates without overriding
+      // animacy, pronoun or proper-name evidence.  This is what separates
+      // adjacent subjects in nested or coordinated infinitive statements.
+      value -= Math.abs(word.index - infinitive.index) * .1;
+      if (word.index < infinitive.index) value += .02;
       return value;
     };
     return score(right) - score(left);
   })[0];
+}
+
+function coordinatedAciSubject(constructions, words, governing, infinitive, accusatives) {
+  const previous = [...constructions].reverse().find(item =>
+    item.type === "aci" && item.governingIndex === governing.index && item.infinitiveIndex < infinitive.index
+  );
+  if (!previous) return null;
+  const coordinated = words.slice(previous.infinitiveIndex + 1, infinitive.index)
+    .some(word => Boolean(COORDINATORS[word.normalized]));
+  if (!coordinated) return null;
+  const frame = VERB_FRAMES[infinitive.lemma];
+  const requiresAccusative = frame?.cases?.includes("accusative") || infinitive.morphology?.transitivity === "transitive";
+  if (!requiresAccusative) return null;
+  const inherited = accusatives.find(word => word.index === previous.subjectIndex);
+  const availableObject = accusatives.some(word => word.index !== previous.subjectIndex);
+  return inherited && availableObject ? inherited : null;
+}
+
+function normalizeStatementInfinitives(result, words) {
+  const statements = result.constructions.filter(item => ["aci", "nci"].includes(item.type));
+  if (!statements.length) return;
+
+  const statementSet = new Set(statements);
+  const statementGroups = new Map();
+  const grouped = [];
+  const groups = new Map();
+  for (const statement of statements) {
+    const key = `${statement.type}:${statement.governingIndex}:${statement.subjectIndex ?? "implicit"}`;
+    let group = groups.get(key);
+    if (!group) {
+      group = {
+        ...statement,
+        infinitiveIndexes: [],
+        predicates: []
+      };
+      groups.set(key, group);
+      grouped.push(group);
+    }
+    group.infinitiveIndexes.push(statement.infinitiveIndex);
+    group.predicates.push({
+      infinitiveIndex: statement.infinitiveIndex,
+      predicateIndex: statement.predicateIndex ?? null,
+      objectIndexes: [...new Set(statement.objectIndexes || [])]
+    });
+    statementGroups.set(statement, group);
+  }
+
+  for (const group of grouped) {
+    const objectIndexes = [...new Set(group.predicates.flatMap(predicate => predicate.objectIndexes))];
+    for (const predicate of group.predicates) predicate.objectIndexes = [];
+    for (const objectIndex of objectIndexes) {
+      const closest = [...group.predicates].sort((left, right) =>
+        Math.abs(left.infinitiveIndex - objectIndex) - Math.abs(right.infinitiveIndex - objectIndex)
+      )[0];
+      if (closest) closest.objectIndexes.push(objectIndex);
+    }
+    group.infinitiveIndex = group.infinitiveIndexes[0];
+    group.predicateIndex = group.predicates[0]?.predicateIndex ?? null;
+    group.objectIndexes = objectIndexes;
+  }
+
+  // Nominals owned by a nested statement must not leak into its parent's
+  // complement list.  The hierarchy is defined by a statement-governing
+  // infinitive, so it remains independent of a particular source sentence.
+  for (const child of grouped) {
+    const parent = grouped.find(candidate => candidate.infinitiveIndexes.includes(child.governingIndex));
+    if (!parent) continue;
+    child.parentInfinitiveIndex = child.governingIndex;
+    const nestedIndexes = new Set([
+      child.subjectIndex,
+      child.predicateIndex,
+      ...(child.objectIndexes || [])
+    ].filter(index => index != null));
+    parent.objectIndexes = parent.objectIndexes.filter(index => !nestedIndexes.has(index));
+    for (const predicate of parent.predicates) {
+      predicate.objectIndexes = predicate.objectIndexes.filter(index => !nestedIndexes.has(index));
+    }
+  }
+
+  const emitted = new Set();
+  result.constructions = result.constructions.flatMap(item => {
+    if (!statementSet.has(item)) return [item];
+    const group = statementGroups.get(item);
+    if (!group || emitted.has(group)) return [];
+    emitted.add(group);
+    return [group];
+  });
+}
+
+/*
+ * Participial constructions own the material between their controller and
+ * the participle, plus attributes that depend on that material. Recording
+ * this span keeps a shallow main-clause parser from later emitting the same
+ * object or modifier a second time.
+ */
+function participleInternalIndexes(result, controllerIndex, participleIndex) {
+  const lower = Math.min(controllerIndex, participleIndex);
+  const upper = Math.max(controllerIndex, participleIndex);
+  const indexes = new Set(range(lower, upper));
+  const dependencies = result.dependencies || [];
+  let changed = true;
+  while (changed) {
+    changed = false;
+    for (const dependency of dependencies) {
+      const dependentType = ["attribute", "participle", "genitive-attribute"].includes(dependency.type);
+      if (dependentType && indexes.has(dependency.headIndex) && !indexes.has(dependency.dependentIndex)) {
+        indexes.add(dependency.dependentIndex);
+        changed = true;
+      }
+      if (dependency.type === "prepositional-object") {
+        if (indexes.has(dependency.headIndex) && !indexes.has(dependency.dependentIndex)) {
+          indexes.add(dependency.dependentIndex);
+          changed = true;
+        } else if (indexes.has(dependency.dependentIndex) && !indexes.has(dependency.headIndex)) {
+          indexes.add(dependency.headIndex);
+          changed = true;
+        }
+      }
+    }
+  }
+  return indexes;
+}
+
+function participleArgumentIndexes(words, internalIndexes, controllerIndex, participleIndex) {
+  return [...internalIndexes].filter(index => {
+    if (index === controllerIndex || index === participleIndex || !isNominal(words[index])) return false;
+    return ["accusative", "dative", "genitive"].some(grammaticalCase => caseIncludes(words[index].morphology, grammaticalCase));
+  });
+}
+
+function ablativeAbsoluteRelation(words) {
+  const discourseTokens = words.map(word => word.normalized);
+  if (discourseTokens.includes("tamen")) return "concessive";
+  if (discourseTokens.some(token => ["ergo", "ideo", "itaque", "propterea"].includes(token))) return "causal";
+  return "temporal";
+}
+
+function participleIsLexicallyActive(word) {
+  return Boolean(
+    word?.morphology?.deponent
+    || word?.morphology?.semideponent
+    || word?.morphology?.lexicalVoice === "deponent"
+    || word?.morphology?.verbClass === "deponent"
+    || VERB_FRAMES[word?.lemma]?.deponent
+    || VERB_FRAMES[word?.lemma]?.semideponent
+  );
 }
 
 function readingForCase(word, grammaticalCase) {

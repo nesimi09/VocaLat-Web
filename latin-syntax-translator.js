@@ -18,6 +18,11 @@ import {
 } from "./latin-analysis.js";
 import { SOURCE_WEIGHTS, SUBORDINATORS } from "./latin-language-data.js";
 import { generateGermanSentence, postprocessGerman, realizeGermanClausePlan } from "./german-generator.js";
+import {
+  annotateMorphologyConfidence,
+  buildLatinSyntaxTree,
+  summarizeAnalysisConfidence
+} from "./latin-syntax-tree.js";
 
 export {
   generateGermanSentence,
@@ -28,6 +33,12 @@ export {
   resolveMorphology,
   selectContextualMeanings,
   tokenizeTranslationInput
+};
+
+export {
+  annotateMorphologyConfidence,
+  buildLatinSyntaxTree,
+  summarizeAnalysisConfidence
 };
 
 /** Prefer a textbook entry only after checking part-of-speech compatibility. */
@@ -43,13 +54,16 @@ export function translateLatinSyntax(matches = [], options = {}) {
     text: "",
     reliable: false,
     confidence: 0,
+    analysisConfidence: { confidence: 0, ambiguous: [], selectedInterpretationOnly: true },
     unresolved: [],
     diagnostics: ["empty"],
     pipeline: { tokens: [], morphology: [], syntax: null, grammar: null, semantics: null }
   };
 
-  const morphology = resolveMorphology(tokens, options);
-  const syntax = parseLatinSyntax(morphology, options);
+  const morphology = annotateMorphologyConfidence(resolveMorphology(tokens, options));
+  const parsedSyntax = parseLatinSyntax(morphology, options);
+  const syntaxTree = parsedSyntax.tree || buildLatinSyntaxTree(parsedSyntax);
+  const syntax = { ...parsedSyntax, tree: syntaxTree, confidence: syntaxTree.confidence };
   const grammar = interpretLatinGrammar(syntax, options);
   const semantics = selectContextualMeanings(grammar, options);
   const generated = generateGermanSentence(semantics, options);
@@ -83,12 +97,15 @@ export function translateLatinSyntax(matches = [], options = {}) {
   const resolvedRatio = (morphology.length - unresolved.length) / Math.max(morphology.length, 1);
   const structuralPenalty = diagnostics.filter(item => item !== "unresolved-lexeme").length * .12;
   const ambiguityPenalty = morphology.filter(word => word.candidates?.length > 1 && (word.candidates[0]?.score || 0) - (word.candidates[1]?.score || 0) < 2).length / Math.max(morphology.length, 1) * .15;
-  const confidence = Math.max(0, Math.min(1, resolvedRatio - structuralPenalty - ambiguityPenalty));
+  const pipelineConfidence = Math.max(0, Math.min(1, resolvedRatio - structuralPenalty - ambiguityPenalty));
+  const confidence = Math.max(0, Math.min(1, pipelineConfidence * .85 + syntaxTree.confidence * .15));
+  const analysisConfidence = summarizeAnalysisConfidence(morphology, syntaxTree);
 
   return {
     text,
     reliable: unresolved.length === 0 && !diagnostics.some(item => item !== "unresolved-lexeme") && confidence >= .72,
     confidence,
+    analysisConfidence,
     unresolved,
     diagnostics,
     lexicalSources: semantics.words.filter(word => word.entry).map(word => ({

@@ -58,7 +58,7 @@ const finite = (token, lemma, german, tense = "present", mood = "indicative", vo
   match(token, lexeme(lemma, german, "v", "fallback", extra), [{ part: "v", tense, mood, voice, person, number }]);
 
 const infinitive = (token, lemma, german, tense = "present", voice = "active", extra = {}) =>
-  match(token, lexeme(lemma, german, "v", "fallback", extra), [{ part: "v", tense, mood: "infinitive", voice }]);
+  match(token, lexeme(lemma, german, "v", "fallback", extra), [{ part: "v", tense, mood: "infinitive", voice, ...extra }]);
 
 const participle = (token, lemma, german, grammaticalCase, number, gender, tense, voice, extra = {}) =>
   match(token, lexeme(lemma, german, "v", "fallback", extra), [{ part: "ppa", case: grammaticalCase, number, gender, tense, voice, mood: "participle" }]);
@@ -245,6 +245,133 @@ test("NcI promotes the infinitive subject and generates a German passive reporti
   assert.ok(hasTypedNode(stages.grammar, ["nci", "nominativuscuminfinitivo"]));
   assert.match(stages.text, /Soldaten.+(?:sollen|werden|heißt es).+(?:Stadt).+(?:erobert|eingenommen)/iu);
   assert.doesNotMatch(stages.text, /werden die Stadt erobern gesagt/iu);
+});
+
+test("one AcI keeps multiple coordinated infinitives and assigns each complement once", () => {
+  const stages = runStages([
+    noun("Caesar", "Caesar", "Caesar", "nominative", "singular", "m", "proper-context"),
+    finite("dicit", "dico", "sagen"),
+    noun("milites", "miles", "der Soldat", "accusative", "plural"),
+    infinitive("venire", "venio", "kommen"),
+    particle("et", "conj", "und"),
+    noun("urbem", "urbs", "die Stadt", "accusative", "singular", "f"),
+    infinitive("capere", "capio", "erobern")
+  ]);
+
+  const constructions = stages.grammar.constructions.filter(item => item.type === "aci");
+  assert.equal(constructions.length, 1);
+  assert.deepEqual(constructions[0].infinitiveIndexes, [3, 6]);
+  assert.match(stages.text, /Caesar.+sagt.+dass.+Soldaten.+kommen.+und.+Stadt.+erobern/iu);
+});
+
+test("a transitive coordinated AcI keeps an animate accusative as its object", () => {
+  const stages = runStages([
+    noun("Caesar", "Caesar", "Caesar", "nominative", "singular", "m", "proper-context"),
+    finite("dicit", "dico", "sagen"),
+    noun("milites", "miles", "der Soldat", "accusative", "plural"),
+    infinitive("venire", "venio", "kommen"),
+    particle("et", "conj", "und"),
+    noun("hostes", "hostis", "der Feind", "accusative", "plural"),
+    infinitive("vincere", "vinco", "besiegen")
+  ]);
+
+  const construction = stages.grammar.constructions.find(item => item.type === "aci");
+  assert.deepEqual(construction?.infinitiveIndexes, [3, 6]);
+  assert.match(stages.text, /Soldaten.+kommen.+und.+Feinde.+besiegen/iu);
+});
+
+test("an infinitive of speaking or thought can govern a nested AcI", () => {
+  const stages = runStages([
+    noun("Caesar", "Caesar", "Caesar", "nominative", "singular", "m", "proper-context"),
+    finite("dicit", "dico", "sagen"),
+    noun("milites", "miles", "der Soldat", "accusative", "plural"),
+    infinitive("putare", "puto", "glauben"),
+    noun("hostes", "hostis", "der Feind", "accusative", "plural"),
+    infinitive("venire", "venio", "kommen")
+  ]);
+
+  const constructions = stages.grammar.constructions.filter(item => item.type === "aci");
+  assert.equal(constructions.length, 2);
+  assert.equal(constructions.find(item => item.governingIndex === 3)?.subjectIndex, 4);
+  assert.match(stages.text, /Caesar.+sagt.+dass.+Soldaten.+glauben.+dass.+Feinde.+kommen/iu);
+});
+
+test("passive and deponent AcI infinitives retain their lexical voice", () => {
+  const passive = runStages([
+    noun("Caesar", "Caesar", "Caesar", "nominative", "singular", "m", "proper-context"),
+    finite("dicit", "dico", "sagen"),
+    noun("urbem", "urbs", "die Stadt", "accusative", "singular", "f"),
+    infinitive("capi", "capio", "erobern", "present", "passive")
+  ]);
+  const deponent = runStages([
+    noun("Caesar", "Caesar", "Caesar", "nominative", "singular", "m", "proper-context"),
+    finite("dicit", "dico", "sagen"),
+    noun("milites", "miles", "der Soldat", "accusative", "plural"),
+    infinitive("proficisci", "proficiscor", "aufbrechen", "present", "passive", {
+      deponent: true,
+      lexicalVoice: "deponent",
+      verbClass: "deponent"
+    })
+  ]);
+
+  assert.match(passive.text, /dass.+Stadt.+erobert.+wird/iu);
+  assert.match(deponent.text, /dass.+Soldaten.+aufbrechen/iu);
+  assert.doesNotMatch(deponent.text, /aufgebrochen.+(?:werden|wird)/iu);
+});
+
+test("one NcI keeps multiple coordinated infinitives", () => {
+  const stages = runStages([
+    noun("Milites", "miles", "der Soldat", "nominative", "plural"),
+    noun("urbem", "urbs", "die Stadt", "accusative", "singular", "f"),
+    infinitive("capere", "capio", "erobern"),
+    particle("et", "conj", "und"),
+    infinitive("fugere", "fugio", "fliehen"),
+    finite("dicuntur", "dico", "sagen", "present", "indicative", "passive", 3, "plural")
+  ]);
+
+  const constructions = stages.grammar.constructions.filter(item => item.type === "nci");
+  assert.equal(constructions.length, 1);
+  assert.deepEqual(constructions[0].infinitiveIndexes, [2, 4]);
+  assert.match(stages.text, /Soldaten.+sollen.+Stadt.+erobern.+und.+fliehen/iu);
+});
+
+test("a periphrastic passive reporting verb licenses an NcI", () => {
+  const stages = runStages([
+    noun("Milites", "miles", "der Soldat", "nominative", "plural"),
+    noun("urbem", "urbs", "die Stadt", "accusative", "singular", "f"),
+    infinitive("cepisse", "capio", "erobern", "perfect"),
+    participle("dicti", "dico", "sagen", "nominative", "plural", "m", "perfect", "passive"),
+    finite("sunt", "sum", "sein", "present", "indicative", "active", 3, "plural")
+  ]);
+
+  const construction = stages.grammar.constructions.find(item => item.type === "nci");
+  assert.equal(construction?.controllerIndex, 3);
+  assert.match(stages.text, /Soldaten.+sollen.+Stadt.+erobert.+haben/iu);
+});
+
+test("an NcI can contain an AcI governed by its reporting infinitive", () => {
+  const stages = runStages([
+    noun("Milites", "miles", "der Soldat", "nominative", "plural"),
+    infinitive("putare", "puto", "glauben"),
+    noun("hostes", "hostis", "der Feind", "accusative", "plural"),
+    infinitive("venire", "venio", "kommen"),
+    finite("dicuntur", "dico", "sagen", "present", "indicative", "passive", 3, "plural")
+  ]);
+
+  assert.equal(stages.grammar.constructions.filter(item => item.type === "nci").length, 1);
+  assert.equal(stages.grammar.constructions.filter(item => item.type === "aci").length, 1);
+  assert.match(stages.text, /Soldaten.+sollen.+glauben.+dass.+Feinde.+kommen/iu);
+});
+
+test("perception and reporting verbs use the general AcI trigger class", () => {
+  const stages = runStages([
+    finite("Audit", "audio", "hören", "present", "indicative", "active", 1),
+    noun("milites", "miles", "der Soldat", "accusative", "plural"),
+    infinitive("venire", "venio", "kommen")
+  ]);
+
+  assert.ok(hasTypedNode(stages.grammar, ["aci", "accusativuscuminfinitivo"]));
+  assert.match(stages.text, /Ich.+höre.+dass.+Soldaten.+kommen/iu);
 });
 
 test("an ablative absolute is a detached temporal construction, not a main-clause object", () => {

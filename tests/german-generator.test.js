@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { postprocessGerman, translateLatinSyntax } from "../latin-syntax-translator.js";
+import { KNOWN_GERMAN_NOUNS, LATIN_IDIOMS } from "../latin-language-data.js";
 
 const entry = (lemma, deutsch, pos = "n") => ({
   lemma,
@@ -94,6 +95,82 @@ test("German lexical gender and plural govern articles even when Latin gender di
   ]);
 
   assert.equal(result.text, "Das Mädchen liebt die Rosen.");
+});
+
+test("central German noun data records non-productive plurals and weak noun forms", () => {
+  assert.deepEqual(KNOWN_GERMAN_NOUNS.Wasser, { article: "das", plural: "Wässer" });
+  assert.deepEqual(KNOWN_GERMAN_NOUNS.Holz, { article: "das", plural: "Hölzer" });
+  assert.deepEqual(KNOWN_GERMAN_NOUNS.Stadt, { article: "die", plural: "Städte" });
+  assert.deepEqual(KNOWN_GERMAN_NOUNS.Herr, { article: "der", plural: "Herren", oblique: "Herrn", genitive: "Herrn" });
+});
+
+test("non-productive plurals are realized from central lexical data", () => {
+  const waters = translateLatinSyntax([
+    noun("Aquae", "aqua", "das Wasser", "nominative", "plural", "f"),
+    noun("urbes", "urbs", "die Stadt", "accusative", "plural", "f"),
+    finite("delent", "deleo", "zerstören", "plural")
+  ]);
+  const wood = translateLatinSyntax([
+    noun("Viri", "vir", "der Mann", "nominative", "plural"),
+    noun("ligna", "lignum", "das Holz", "accusative", "plural", "n"),
+    finite("portant", "porto", "tragen", "plural")
+  ]);
+
+  assert.equal(waters.text, "Die Wässer zerstören die Städte.");
+  assert.equal(wood.text, "Die Männer tragen die Hölzer.");
+});
+
+test("weak German nouns use their lexical dative and genitive forms", () => {
+  const dative = translateLatinSyntax([
+    noun("Amicus", "amicus", "der Freund", "nominative"),
+    noun("domino", "dominus", "der Herr", "dative"),
+    noun("librum", "liber", "das Buch", "accusative", "singular", "n"),
+    finite("dat", "do", "geben")
+  ]);
+  const genitive = translateLatinSyntax([
+    noun("Liber", "liber", "das Buch", "nominative", "singular", "n"),
+    noun("domini", "dominus", "der Herr", "genitive"),
+    finite("manet", "maneo", "bleiben")
+  ]);
+
+  assert.match(dative.text, /dem Herrn/u);
+  assert.match(genitive.text, /des Herrn/u);
+  assert.doesNotMatch(`${dative.text} ${genitive.text}`, /Herrens/u);
+});
+
+test("productive idiom data covers help, concern, and need valency", () => {
+  const byId = Object.fromEntries(LATIN_IDIOMS.map(item => [item.id, item]));
+  assert.equal(byId["auxilium-ferre"].german, "Hilfe leisten");
+  assert.equal(byId["curae-esse"].german, "wichtig sein");
+  assert.deepEqual(
+    { subjectRole: byId["opus-esse"].subjectRole, directObjectRole: byId["opus-esse"].directObjectRole },
+    { subjectRole: "indirectObject", directObjectRole: "ablative" }
+  );
+});
+
+test("idiom valency keeps recipients and promotes opus arguments productively", () => {
+  const help = translateLatinSyntax([
+    noun("Dominus", "dominus", "der Herr", "nominative"),
+    noun("amico", "amicus", "der Freund", "dative"),
+    noun("auxilium", "auxilium", "die Hilfe", "accusative", "singular", "n"),
+    finite("fert", "fero", "tragen")
+  ]);
+  const concern = translateLatinSyntax([
+    noun("Res", "res", "die Sache", "nominative", "singular", "f"),
+    noun("domino", "dominus", "der Herr", "dative"),
+    noun("curae", "cura", "die Sorge", "dative", "singular", "f"),
+    finite("est", "sum", "sein")
+  ]);
+  const need = translateLatinSyntax([
+    noun("domino", "dominus", "der Herr", "dative"),
+    noun("gladio", "gladius", "das Schwert", "ablative", "singular", "m"),
+    noun("opus", "opus", "die Notwendigkeit", "nominative", "singular", "n"),
+    finite("est", "sum", "sein")
+  ]);
+
+  assert.equal(help.text, "Der Herr leistet dem Freund Hilfe.");
+  assert.equal(concern.text, "Die Sache ist dem Herrn wichtig.");
+  assert.equal(need.text, "Der Herr braucht ein Schwert.");
 });
 
 test("a perfect deponent ablative absolute remains active in German", () => {

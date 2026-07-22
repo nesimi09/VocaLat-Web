@@ -163,7 +163,7 @@ test("present and perfect passive participles keep their agreeing antecedents", 
     finite("venit", "venio", "kommen")
   ]);
   assert.equal(constructionTypes(present).has("present-participle"), true);
-  assertTranslation(present, /Mädchen.+(?:das singt|singend).+kommt/iu);
+  assertTranslation(present, /(?:singende.+Mädchen|Mädchen.+(?:das singt|singend)).+kommt/iu);
 
   const perfectPassive = translateLatinSyntax([
     noun("Porta", "porta", "das Tor", "nominative", "singular", "f"),

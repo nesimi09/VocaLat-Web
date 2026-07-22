@@ -23,7 +23,7 @@ const largeRuntimeAssets = [
 test("every service-worker shell asset exists", () => {
   assert.ok(shellAssets.length >= 10);
   for (const asset of shellAssets) assert.ok(statSync(resolve(root, asset)).isFile(), `${asset} fehlt`);
-  for (const courseAsset of ["course-engine.js", "course-access.js", "grammar-order.js", "grammar-practice.js", "latin-syntax-translator.js", "latin-analysis.js", "latin-language-data.js", "german-generator.js", "payment.js", "data/course.json"]) {
+  for (const courseAsset of ["course-engine.js", "course-access.js", "grammar-order.js", "grammar-practice.js", "latin-syntax-translator.js", "latin-analysis.js", "latin-syntax-tree.js", "latin-language-data.js", "german-generator.js", "payment.js", "data/course.json"]) {
     assert.equal(shellAssets.includes(courseAsset), true, `${courseAsset} muss zum Offline-App-Rahmen gehören`);
   }
   assert.equal(shellAssets.includes("data/translation-memory.json"), false, "fertige Satzübersetzungen dürfen nicht im Laufzeit-Cache liegen");

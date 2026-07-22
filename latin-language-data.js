@@ -141,9 +141,10 @@ export const PERSONAL_PRONOUNS = Object.freeze({
 /** Common governing-verb classes used for construction recognition. */
 export const VERB_CLASSES = Object.freeze({
   speechThought: new Set([
-    "aio", "arbitror", "censeo", "cognosco", "credo", "dico", "existimo", "fateor",
-    "intellego", "memoro", "nescio", "puto", "respondeo", "scio", "scribo", "sentio",
-    "spero", "video"
+    "accipio", "affirmo", "aio", "arbitror", "audio", "censeo", "cognosco", "comperio",
+    "confiteor", "credo", "dico", "existimo", "fateor", "intellego", "iudico", "memoro",
+    "nego", "nescio", "nuntio", "promitto", "puto", "reor", "respondeo", "scio", "scribo",
+    "sentio", "spero", "suspicor", "trado", "video"
   ]),
   command: new Set(["cogo", "impero", "iubeo", "moneo", "peto", "rogo", "veto"]),
   modal: new Set(["audeo", "cupio", "debeo", "desidero", "possum", "soleo", "volo", "nolo", "malo"]),
@@ -245,12 +246,25 @@ export const VERB_FRAMES = Object.freeze({
 /** Extensible lemma patterns for idioms; no complete source sentence appears. */
 export const LATIN_IDIOMS = Object.freeze([
   { id: "gratias-agere", lemmas: ["gratia", "ago"], german: "danken", head: "ago", consumes: ["gratia"] },
+  { id: "auxilium-ferre", lemmas: ["auxilium", "fero"], german: "Hilfe leisten", head: "fero", consumes: ["auxilium"] },
   { id: "bellum-gerere", lemmas: ["bellum", "gero"], german: "Krieg führen", head: "gero", consumes: ["bellum"] },
   { id: "consilium-capere", lemmas: ["consilium", "capio"], german: "beschließen", head: "capio", consumes: ["consilium"] },
   { id: "iter-facere", lemmas: ["iter", "facio"], german: "reisen", head: "facio", consumes: ["iter"] },
   { id: "sacrum-facere", lemmas: ["sacrum", "facio"], german: "ein Opfer darbringen", head: "facio", consumes: ["sacrum"] },
   { id: "memoria-tenere", lemmas: ["memoria", "teneo"], german: "im Gedächtnis behalten", head: "teneo", consumes: ["memoria"] },
-  { id: "finem-facere", lemmas: ["finis", "facio"], german: "ein Ende machen", head: "facio", consumes: ["finis"] }
+  { id: "finem-facere", lemmas: ["finis", "facio"], german: "ein Ende machen", head: "facio", consumes: ["finis"] },
+  { id: "curae-esse", lemmas: ["cura", "sum"], german: "wichtig sein", head: "sum", consumes: ["cura"] },
+  {
+    id: "opus-esse",
+    lemmas: ["opus", "sum"],
+    german: "brauchen",
+    head: "sum",
+    consumes: ["opus"],
+    subjectRole: "indirectObject",
+    directObjectRole: "ablative",
+    germanDirectCase: "accusative",
+    directObjectIndefinite: true
+  }
 ]);
 
 /**
@@ -412,6 +426,10 @@ export const KNOWN_GERMAN_NOUNS = Object.freeze({
   "Sohn": { article: "der", plural: "Söhne" },
   "Tochter": { article: "die", plural: "Töchter" },
   "Frau": { article: "die", plural: "Frauen" },
+  "Herr": { article: "der", plural: "Herren", oblique: "Herrn", genitive: "Herrn" },
+  "Holz": { article: "das", plural: "Hölzer" },
+  "Stadt": { article: "die", plural: "Städte" },
+  "Wasser": { article: "das", plural: "Wässer" },
   "Würfel": { article: "der", plural: "Würfel" }
 });
 

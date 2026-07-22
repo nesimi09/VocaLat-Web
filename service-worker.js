@@ -1,5 +1,5 @@
-const CACHE = "vocalat-web-shell-v27";
-const RUNTIME_CACHE = "vocalat-web-runtime-v27";
+const CACHE = "vocalat-web-shell-v28";
+const RUNTIME_CACHE = "vocalat-web-runtime-v28";
 const ASSETS = [
   "./",
   "./index.html",
@@ -13,6 +13,7 @@ const ASSETS = [
   "./learning-engine.js",
   "./latin-syntax-translator.js",
   "./latin-analysis.js",
+  "./latin-syntax-tree.js",
   "./latin-language-data.js",
   "./german-generator.js",
   "./document-analysis.js",
